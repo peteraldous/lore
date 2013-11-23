@@ -5,8 +5,7 @@ case class Function(val name: String, val params: List[Variable], val statements
 
   val labelTable = Map((statements filter { _ match { case l: LabelStatement => true; case _ => false } })
       map { _ match { case LabelStatement(label) => (label, statements.indexOf(label)) } }: _*)
-  val catchDirectives = statements filter { _ match { case c: CatchDirective => true; case _ => false } }
-  val handlers = catchDirectives map {
+  val handlers = (statements filter { _ match { case c: CatchDirective => true; case _ => false } }) map {
     _ match {
       case CatchDirective(begin, end, handler) =>
         Handler(labelTable(begin), labelTable(end), handler)
@@ -20,17 +19,8 @@ case class Function(val name: String, val params: List[Variable], val statements
     }
   }
 
-  def successors(ln: Int): Set[Int] = {
-    if (isEndOfFunction(ln)) Set.empty else statements(ln) match {
-      case l: LabelStatement => Set(ln + 1)
-      case a: AssignmentStatement => Set(ln + 1)
-      case GotoStatement(l) => Set(labelTable(l))
-      case IfStatement(e, l) => Set(labelTable(l), ln + 1)
-      case _ => scala.sys.error("successors: unknown statement type")
-    }
-  }
-
   // TODO: memoize
+  // TODO: completely rewrite
   def mustReach(s: Int, seen: Set[Int] = Set.empty): Set[Int] = {
     if (seen contains s) {
       //      System.err.println("warning: loop. Termination leaks are possible.")

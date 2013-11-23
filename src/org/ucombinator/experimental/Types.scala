@@ -27,29 +27,21 @@ import scala.collection.GenTraversableOnce
 
 // TODO: make Expressions and Values and so on implement an interface for extensibility to the value system
 
-abstract class Expression {
-  def abstractMe: AbstractExpression
-}
-case class Addition(lhs: Expression, rhs: Expression) extends Expression {
-  override def abstractMe: AbstractAddition = {
-    AbstractAddition(lhs.abstractMe, rhs.abstractMe)
+abstract class Expression
+case class Addition(lhs: Expression, rhs: Expression) extends Expression
+case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
+case class Comparison(lhs: Expression, rhs: Expression) extends Expression
+case class Variable(v: String) extends Expression
+case class ConcreteInt(v: Int) extends Value {
+  def abstractMe: AbstractInt = v match {
+    case 0 => z
+    case i if i < 0 => n
+    case i if i > 0 => p
   }
-}
-case class Multiplication(lhs: Expression, rhs: Expression) extends Expression {
-  override def abstractMe: AbstractMultiplication = {
-    AbstractMultiplication(lhs.abstractMe, rhs.abstractMe)
+  override def +(value: Value): Value = value match {
+    case ConcreteInt(i) => ConcreteInt(v+i)
+    case ai: AbstractInt => ai+abstractMe
   }
-}
-case class Comparison(lhs: Expression, rhs: Expression) extends Expression {
-  override def abstractMe: AbstractComparison = {
-    AbstractComparison(lhs.abstractMe, rhs.abstractMe)
-  }
-}
-case class Variable(v: String) extends Expression {
-  override def abstractMe: AbstractVariable = AbstractVariable(v)
-}
-case class Value(v: Int) extends Expression {
-  override def abstractMe: AbstractValue = if (v < 0) n else { if (v > 0) p else z }
 }
 
 object TypeAliases {
@@ -92,7 +84,7 @@ case class Address(a: Int)
 case class Label(l: String)
 //case class Function(name: String, parameters: List[Variable], body: List[Statement])
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
-case class AbstractStore() extends HashMap[Address, AbstractValue]
+case class AbstractStore() extends HashMap[Address, AbstractInt]
 
 /*
 class Kontinuation
@@ -106,25 +98,44 @@ object halt extends Kontinuation
 // states are (ln, env, store)
 // configurations are (state, stack summary)
 
-abstract class AbstractExpression
-case class AbstractAddition(lhs: AbstractExpression, rhs: AbstractExpression) extends AbstractExpression
-case class AbstractMultiplication(lhs: AbstractExpression, rhs: AbstractExpression) extends AbstractExpression
-case class AbstractComparison(lhs: AbstractExpression, rhs: AbstractExpression) extends AbstractExpression
-case class AbstractVariable(v: String) extends AbstractExpression
-abstract class AbstractValue() extends AbstractExpression
+trait Value extends Expression {
+  def +(v: Value): Value
+}
 
-case object nzp extends AbstractValue()
-case object nz extends AbstractValue()
-case object np extends AbstractValue()
-case object zp extends AbstractValue()
-case object n extends AbstractValue()
-case object z extends AbstractValue()
-case object p extends AbstractValue()
+abstract class AbstractInt() extends Value
+
+case object NotImplementedException extends RuntimeException
+
+trait AbstractNegative extends AbstractInt
+trait AbstractZero extends AbstractInt
+trait AbstractPositive extends AbstractInt
+
+case object nzp extends AbstractInt with AbstractNegative with AbstractZero with AbstractPositive {
+  override def +(v: Value): Value = this
+}
+case object nz extends AbstractInt with AbstractNegative with AbstractZero {
+  override def +(v: Value): Value = throw NotImplementedException
+}
+case object np extends AbstractInt with AbstractNegative with AbstractPositive {
+  override def +(v: Value): Value = throw NotImplementedException
+}
+case object zp extends AbstractInt with AbstractZero with AbstractPositive {
+  override def +(v: Value): Value = throw NotImplementedException
+}
+case object n extends AbstractInt with AbstractNegative {
+  override def +(v: Value): Value = throw NotImplementedException
+}
+case object z extends AbstractInt with AbstractZero {
+  override def +(v: Value): Value = throw NotImplementedException
+}
+case object p extends AbstractInt with AbstractPositive {
+  override def +(v: Value): Value = throw NotImplementedException
+}
 
 object AbstractValues {
-  val positive = Set[AbstractValue](nzp, np, zp, p)
-  val zero = Set[AbstractValue](nzp, nz, zp, z)
-  val negative = Set[AbstractValue](nzp, nz, np, n)
+  val positive = Set[AbstractInt](nzp, np, zp, p)
+  val zero = Set[AbstractInt](nzp, nz, zp, z)
+  val negative = Set[AbstractInt](nzp, nz, np, n)
   val all = positive | zero | negative
 }
 

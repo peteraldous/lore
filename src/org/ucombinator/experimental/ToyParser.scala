@@ -57,7 +57,7 @@ object ToyParser extends RegexParsers {
   def variable: Parser[Variable] = "[a-z]+".r ^^ { Variable(_) }
   def expr: Parser[Expression] = addition | multiplication | comparison | variable | value
 
-  def value: Parser[Value] = "[0-9]+".r ^^ { (integer) => Value(integer.toInt) }
+  def value: Parser[Value] = "[0-9]+".r ^^ { (integer) => ConcreteInt(integer.toInt) }
   def addition: Parser[Addition] = "(+" ~> expr ~ expr <~ ")" ^^ { (result) => Addition(result._1, result._2) }
   def multiplication: Parser[Multiplication] = "(*" ~> expr ~ expr <~ ")" ^^ { (result) => Multiplication(result._1, result._2) }
   def comparison: Parser[Comparison] = "(=" ~> expr ~ expr <~ ")" ^^ { (result) => Comparison(result._1, result._2) }
