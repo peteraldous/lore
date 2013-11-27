@@ -27,6 +27,9 @@ import scala.collection.GenTraversableOnce
 
 // TODO: make Expressions and Values and so on implement an interface for extensibility to the value system
 
+case object NotImplementedException extends RuntimeException
+case object ImpossibleException extends RuntimeException
+
 abstract class Expression
 case class Addition(lhs: Expression, rhs: Expression) extends Expression
 case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
@@ -39,8 +42,8 @@ case class ConcreteInt(v: Int) extends Value {
     case i if i > 0 => p
   }
   override def +(value: Value): Value = value match {
-    case ConcreteInt(i) => ConcreteInt(v+i)
-    case ai: AbstractInt => ai+abstractMe
+    case ConcreteInt(i) => ConcreteInt(v + i)
+    case ai: AbstractInt => ai + abstractMe
   }
 }
 
@@ -71,12 +74,25 @@ object TypeAliases {
     def apply(l: List[Pair[Address, Value]]): Store = new Store(Map(l: _*), Map.empty)
   }
   */
-//  val noFunction = Function("noFunction", List.empty, List.empty)
+  //  val noFunction = Function("noFunction", List.empty, List.empty)
   case class ConcreteResult(val value: Value, val tainted: Boolean)
   type Result = Option[ConcreteResult]
   object Result {
     def apply(v: Value, t: Boolean): Result = Some(ConcreteResult(v, t))
   }
+
+  val nzp = AbstractInt(false, false, false)
+  val nz = AbstractInt(false, false, true)
+  val np = AbstractInt(false, true, false)
+  val zp = AbstractInt(true, false, false)
+  val n = AbstractInt(false, true, true)
+  val z = AbstractInt(true, false, true)
+  val p = AbstractInt(true, true, false)
+
+  val positive = Set[AbstractInt](nzp, np, zp, p)
+  val zero = Set[AbstractInt](nzp, nz, zp, z)
+  val negative = Set[AbstractInt](nzp, nz, np, n)
+  val all = positive | zero | negative
 }
 
 case class Address(a: Int)
@@ -102,41 +118,12 @@ trait Value extends Expression {
   def +(v: Value): Value
 }
 
-abstract class AbstractInt() extends Value
-
-case object NotImplementedException extends RuntimeException
-
-trait AbstractNegative extends AbstractInt
-trait AbstractZero extends AbstractInt
-trait AbstractPositive extends AbstractInt
-
-case object nzp extends AbstractInt with AbstractNegative with AbstractZero with AbstractPositive {
-  override def +(v: Value): Value = this
-}
-case object nz extends AbstractInt with AbstractNegative with AbstractZero {
-  override def +(v: Value): Value = throw NotImplementedException
-}
-case object np extends AbstractInt with AbstractNegative with AbstractPositive {
-  override def +(v: Value): Value = throw NotImplementedException
-}
-case object zp extends AbstractInt with AbstractZero with AbstractPositive {
-  override def +(v: Value): Value = throw NotImplementedException
-}
-case object n extends AbstractInt with AbstractNegative {
-  override def +(v: Value): Value = throw NotImplementedException
-}
-case object z extends AbstractInt with AbstractZero {
-  override def +(v: Value): Value = throw NotImplementedException
-}
-case object p extends AbstractInt with AbstractPositive {
-  override def +(v: Value): Value = throw NotImplementedException
-}
-
-object AbstractValues {
-  val positive = Set[AbstractInt](nzp, np, zp, p)
-  val zero = Set[AbstractInt](nzp, nz, zp, z)
-  val negative = Set[AbstractInt](nzp, nz, np, n)
-  val all = positive | zero | negative
+case class AbstractInt(val nonNegative: Boolean, val nonZero: Boolean, val nonPositive: Boolean) extends Value {
+  override def +(v: Value): Value = v match {
+    case ci: ConcreteInt => this + ci.abstractMe
+    // TODO
+    case AbstractInt(nN, nZ, nP) => throw NotImplementedException
+  }
 }
 
 abstract class Statement {
