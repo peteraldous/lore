@@ -36,11 +36,11 @@ case class Variable(v: String) extends Expression
 case class ConcreteInt(v: Int) extends Value {
   override def +(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v + i)
-    case ai: SignInt => ai + SignIntFactory(this)
+    case si: SignInt => si + this
   }
   override def *(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v * i)
-    case si: SignInt => si + SignIntFactory(this)
+    case si: SignInt => si * this
   }
 }
 
@@ -85,14 +85,6 @@ object TypeAliases {
   val n = new SignInt(false, true, true)
   val z = new SignInt(true, false, true)
   val p = new SignInt(true, true, false)
-
-  object SignIntFactory {
-    def apply(v: Any): SignInt = v match {
-      case si: SignInt => si
-      case ConcreteInt(i) => apply(i)
-      case i: Int => new SignInt(i < 0, i == 0, i > 0)
-    }
-  }
 }
 
 trait Value extends Expression {
@@ -100,18 +92,23 @@ trait Value extends Expression {
   def *(v: Value): Value
 }
 
-case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends Value {
+trait AbstractValue extends Value {
+  def abstractValue(ci: ConcreteInt): AbstractValue
+}
+
+case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends AbstractValue {
   override def +(v: Value): Value = v match {
-    case ci: ConcreteInt => SignInt.this + SignIntFactory(ci)
+    case ci: ConcreteInt => SignInt.this + abstractValue(ci)
     case SignInt(nN, nZ, nP) => SignInt(nN || negative, (zero && nZ) || (positive && nN) || (negative && nP), nP || positive)
   }
   override def *(v: Value): Value = v match {
-    case ci: ConcreteInt => this * SignIntFactory(ci)
+    case ci: ConcreteInt => this * abstractValue(ci)
     case SignInt(oN, oZ, oP) =>
       SignInt((oP && negative) || (oN && positive),
         oZ || zero,
         (oP && positive) || (oN && negative))
   }
+  def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
 }
 
 abstract sealed class Address
