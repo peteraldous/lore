@@ -36,14 +36,9 @@ case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
 case class Comparison(lhs: Expression, rhs: Expression) extends Expression
 case class Variable(v: String) extends Expression
 case class ConcreteInt(v: Int) extends Value {
-  def abstractMe: AbstractInt = v match {
-    case 0 => z
-    case i if i < 0 => n
-    case i if i > 0 => p
-  }
   override def +(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v + i)
-    case ai: AbstractInt => ai + abstractMe
+    case ai: SignInt => ai + SignIntFactory(this)
   }
 }
 
@@ -81,18 +76,37 @@ object TypeAliases {
     def apply(v: Value, t: Boolean): Result = Some(ConcreteResult(v, t))
   }
 
-  val nzp = AbstractInt(false, false, false)
-  val nz = AbstractInt(false, false, true)
-  val np = AbstractInt(false, true, false)
-  val zp = AbstractInt(true, false, false)
-  val n = AbstractInt(false, true, true)
-  val z = AbstractInt(true, false, true)
-  val p = AbstractInt(true, true, false)
+  val nzp = new SignInt(false, false, false)
+  val nz = new SignInt(false, false, true)
+  val np = new SignInt(false, true, false)
+  val zp = new SignInt(true, false, false)
+  val n = new SignInt(false, true, true)
+  val z = new SignInt(true, false, true)
+  val p = new SignInt(true, true, false)
 
-  val positive = Set[AbstractInt](nzp, np, zp, p)
-  val zero = Set[AbstractInt](nzp, nz, zp, z)
-  val negative = Set[AbstractInt](nzp, nz, np, n)
+  val positive = Set[SignInt](nzp, np, zp, p)
+  val zero = Set[SignInt](nzp, nz, zp, z)
+  val negative = Set[SignInt](nzp, nz, np, n)
   val all = positive | zero | negative
+  
+  object SignIntFactory {
+    def apply(v: Any): SignInt = v match {
+      case si: SignInt => si
+      case ConcreteInt(i) => apply(i)
+      case i: Int => new SignInt(i<0, i==0, i>0)
+    }
+  }
+}
+
+trait Value extends Expression {
+  def +(v: Value): Value
+}
+
+case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends Value {
+  override def +(v: Value): Value = v match {
+    case ci: ConcreteInt => SignInt.this + SignIntFactory(ci)
+    case SignInt(nN, nZ, nP) => SignInt(nN || negative, (zero && nZ) || (positive && nN) || (negative && nP), nP || positive)
+  }
 }
 
 case class Address(a: Int)
@@ -100,7 +114,7 @@ case class Address(a: Int)
 case class Label(l: String)
 //case class Function(name: String, parameters: List[Variable], body: List[Statement])
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
-case class AbstractStore() extends HashMap[Address, AbstractInt]
+case class AbstractStore() extends HashMap[Address, SignInt]
 
 /*
 class Kontinuation
@@ -113,18 +127,6 @@ object halt extends Kontinuation
 
 // states are (ln, env, store)
 // configurations are (state, stack summary)
-
-trait Value extends Expression {
-  def +(v: Value): Value
-}
-
-case class AbstractInt(val nonNegative: Boolean, val nonZero: Boolean, val nonPositive: Boolean) extends Value {
-  override def +(v: Value): Value = v match {
-    case ci: ConcreteInt => this + ci.abstractMe
-    // TODO
-    case AbstractInt(nN, nZ, nP) => throw NotImplementedException
-  }
-}
 
 abstract class Statement {
   def isEndOfFunction: Boolean
