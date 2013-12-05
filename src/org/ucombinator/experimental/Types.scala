@@ -25,8 +25,6 @@ import scala.collection.immutable.HashMap
 import TypeAliases._
 import scala.collection.GenTraversableOnce
 
-// TODO: make Expressions and Values and so on implement an interface for extensibility to the value system
-
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
 
@@ -39,6 +37,10 @@ case class ConcreteInt(v: Int) extends Value {
   override def +(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v + i)
     case ai: SignInt => ai + SignIntFactory(this)
+  }
+  override def *(value: Value): Value = value match {
+    case ConcreteInt(i) => ConcreteInt(v * i)
+    case si: SignInt => si + SignIntFactory(this)
   }
 }
 
@@ -84,22 +86,18 @@ object TypeAliases {
   val z = new SignInt(true, false, true)
   val p = new SignInt(true, true, false)
 
-  val positive = Set[SignInt](nzp, np, zp, p)
-  val zero = Set[SignInt](nzp, nz, zp, z)
-  val negative = Set[SignInt](nzp, nz, np, n)
-  val all = positive | zero | negative
-  
   object SignIntFactory {
     def apply(v: Any): SignInt = v match {
       case si: SignInt => si
       case ConcreteInt(i) => apply(i)
-      case i: Int => new SignInt(i<0, i==0, i>0)
+      case i: Int => new SignInt(i < 0, i == 0, i > 0)
     }
   }
 }
 
 trait Value extends Expression {
   def +(v: Value): Value
+  def *(v: Value): Value
 }
 
 case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends Value {
@@ -107,9 +105,17 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
     case ci: ConcreteInt => SignInt.this + SignIntFactory(ci)
     case SignInt(nN, nZ, nP) => SignInt(nN || negative, (zero && nZ) || (positive && nN) || (negative && nP), nP || positive)
   }
+  override def *(v: Value): Value = v match {
+    case ci: ConcreteInt => this * SignIntFactory(ci)
+    case SignInt(oN, oZ, oP) =>
+      SignInt((oP && negative) || (oN && positive),
+        oZ || zero,
+        (oP && positive) || (oN && negative))
+  }
 }
 
-case class Address(a: Int)
+abstract sealed class Address
+case class ConcreteAddress(a: Int) extends Address
 // no need for abstract environments because addresses stay the same
 case class Label(l: String)
 //case class Function(name: String, parameters: List[Variable], body: List[Statement])
@@ -128,7 +134,7 @@ object halt extends Kontinuation
 // states are (ln, env, store)
 // configurations are (state, stack summary)
 
-abstract class Statement {
+abstract sealed class Statement {
   def isEndOfFunction: Boolean
 }
 case class LabelStatement(val l: Label) extends Statement {
@@ -176,6 +182,6 @@ case class MoveResult(val v: Variable) extends Statement {
   override def toString: String = super.toString + "\"(result " + v + ")\""
 }
 
-case class Handler(val begin: Int, val end: Int, val code: Label) {
+case class ExceptionHandler(val begin: Int, val end: Int, val code: Label) {
   def contains(line: Int): Boolean = begin < line && end >= line
 }
