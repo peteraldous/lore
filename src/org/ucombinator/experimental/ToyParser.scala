@@ -1,5 +1,5 @@
 /*
-    Implicit Flows: a prototype taint tracking system for implicit flows
+    Lore: a prototype taint tracking system for implicit flows
     Copyright (C) 2013   Petey Aldous <petey.aldous@utah.edu>
 
     This program is free software; you can redistribute it and/or modify
