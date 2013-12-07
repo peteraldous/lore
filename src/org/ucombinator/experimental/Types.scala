@@ -28,74 +28,31 @@ import scala.collection.GenTraversableOnce
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
 
+abstract sealed trait Stored
+
 abstract class Expression
 case class Addition(lhs: Expression, rhs: Expression) extends Expression
 case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
 case class Comparison(lhs: Expression, rhs: Expression) extends Expression
 case class Variable(v: String) extends Expression
-case class ConcreteInt(v: Int) extends Value {
-  override def +(value: Value): Value = value match {
-    case ConcreteInt(i) => ConcreteInt(v + i)
-    case si: SignInt => si + this
-  }
-  override def *(value: Value): Value = value match {
-    case ConcreteInt(i) => ConcreteInt(v * i)
-    case si: SignInt => si * this
-  }
-}
 
-object TypeAliases {
-  type Env = Map[Variable, Address]
-  /*
-  case class Store(val values: Map[Address, Value], val stack: Map[Address, Kontinuation]) {
-    def apply(): Store = Store(values.empty, stack.empty)
-    def apply(a: Address) = values(a)
-    def +(a: Address, v: Value): Store = new Store(values + Pair(a, v), stack)
-    def +(a: Address, k: Kontinuation): Store = new Store(values, stack + Pair(a, k))
-    def +(p: Pair[Address, Value]): Store = new Store(values + p, stack)
-    def ++(pairs: Pair[Address, Value]*): Store = new Store(values ++ pairs, stack)
-    def ++(l: List[Pair[Address, Value]]): Store = new Store(values ++ l, stack)
-  }
-  */
-  object Env {
-    def apply(): Env = Map.empty
-    def apply(v: Variable, a: Address): Env = Map(v -> a)
-    def apply(pairs: Pair[Variable, Address]*): Env = Map(pairs: _*)
-    def apply(l: List[Pair[Variable, Address]]): Env = Map(l: _*)
-  }
-  /*
-  object Store {
-    def apply(): Store = new Store(Map.empty, Map.empty)
-    def apply(a: Address, v: Value): Store = new Store(Map(a -> v), Map.empty)
-    def apply(pairs: Pair[Address, Value]*): Store = new Store(Map(pairs: _*), Map.empty)
-    def apply(l: List[Pair[Address, Value]]): Store = new Store(Map(l: _*), Map.empty)
-  }
-  */
-  //  val noFunction = Function("noFunction", List.empty, List.empty)
-  case class ConcreteResult(val value: Value, val tainted: Boolean)
-  type Result = Option[ConcreteResult]
-  object Result {
-    def apply(v: Value, t: Boolean): Result = Some(ConcreteResult(v, t))
-  }
-
-  val nzp = new SignInt(false, false, false)
-  val nz = new SignInt(false, false, true)
-  val np = new SignInt(false, true, false)
-  val zp = new SignInt(true, false, false)
-  val n = new SignInt(false, true, true)
-  val z = new SignInt(true, false, true)
-  val p = new SignInt(true, true, false)
-}
-
-trait Value extends Expression {
+trait Value extends Expression with Stored {
   def +(v: Value): Value
   def *(v: Value): Value
 }
-
+case class ConcreteInt(v: Int) extends Value {
+  override def +(value: Value): Value = value match {
+    case ConcreteInt(i) => ConcreteInt(v + i)
+    case _ => value + this
+  }
+  override def *(value: Value): Value = value match {
+    case ConcreteInt(i) => ConcreteInt(v * i)
+    case _ => value * this
+  }
+}
 trait AbstractValue extends Value {
   def abstractValue(ci: ConcreteInt): AbstractValue
 }
-
 case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends AbstractValue {
   override def +(v: Value): Value = v match {
     case ci: ConcreteInt => SignInt.this + abstractValue(ci)
@@ -111,13 +68,49 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
   def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
 }
 
-abstract sealed class Address
-case class ConcreteAddress(a: Int) extends Address
-// no need for abstract environments because addresses stay the same
+abstract sealed class Address extends Stored
+case class BindAddress(a: Int) extends Address
+case class KontAddress(a: Int) extends Address
+
+object TypeAliases {
+  type Env = Map[Variable, Address]
+  case class Store(val values: Map[Address, Stored]) {
+    def apply(): Store = Store(values.empty)
+    def apply(a: Address) = values(a)
+    def +(a: Address, v: Stored): Store = Store(values + Pair(a, v))
+    def +(p: Pair[Address, Stored]): Store = Store(values + p)
+    def ++(pairs: Pair[Address, Stored]*): Store = Store(values ++ pairs)
+    def ++(l: List[Pair[Address, Stored]]): Store = Store(values ++ l)
+  }
+  object Env {
+    def apply(): Env = Map.empty
+    def apply(v: Variable, a: Address): Env = Map(v -> a)
+    def apply(pairs: Pair[Variable, Address]*): Env = Map(pairs: _*)
+    def apply(l: List[Pair[Variable, Address]]): Env = Map(l: _*)
+  }
+  object Store {
+    def apply: Store = new Store(Map.empty)
+    def empty: Store = new Store(Map.empty)
+    def apply(a: Address, v: Value): Store = new Store(Map(a -> v))
+    def apply(pairs: Pair[Address, Value]*): Store = new Store(Map(pairs: _*))
+    def apply(l: List[Pair[Address, Value]]): Store = new Store(Map(l: _*))
+  }
+  case class ConcreteResult(val value: Value, val tainted: Boolean)
+  type Result = Option[ConcreteResult]
+  object Result {
+    def apply(v: Value, t: Boolean): Result = Some(ConcreteResult(v, t))
+  }
+
+  val nzp = new SignInt(false, false, false)
+  val nz = new SignInt(false, false, true)
+  val np = new SignInt(false, true, false)
+  val zp = new SignInt(true, false, false)
+  val n = new SignInt(false, true, true)
+  val z = new SignInt(true, false, true)
+  val p = new SignInt(true, true, false)
+}
 case class Label(l: String)
-//case class Function(name: String, parameters: List[Variable], body: List[Statement])
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
-case class AbstractStore() extends HashMap[Address, SignInt]
 
 /*
 class Kontinuation

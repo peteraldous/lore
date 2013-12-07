@@ -22,7 +22,8 @@ package org.ucombinator.experimental
 case class Function(val name: String, val params: List[Variable], val statements: List[Statement]) {
   case object StaticStatementException extends RuntimeException
 
-  val labelTable = Map((statements filter { _ match { case l: LabelStatement => true; case _ => false } })
+  val labelStatements = statements filter { _ match { case l: LabelStatement => true; case _ => false } }
+  val labelTable = Map(labelStatements
     map {
       _ match {
         case LabelStatement(label) => (label, statements.indexOf(label))
