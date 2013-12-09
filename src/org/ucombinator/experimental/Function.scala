@@ -22,19 +22,18 @@ package org.ucombinator.experimental
 case class Function(val name: String, val params: List[Variable], val statements: List[Statement]) {
   case object StaticStatementException extends RuntimeException
 
-  val labelStatements = statements filter { _ match { case l: LabelStatement => true; case _ => false } }
-  val labelTable = Map(labelStatements
-    map {
-      _ match {
-        case LabelStatement(label) => (label, statements.indexOf(label))
-        case _ => throw ImpossibleException
-      }
-    }: _*)
-  val handlers = (statements filter { _ match { case c: CatchDirective => true; case _ => false } }) map {
+  val labelStatements = statements flatMap {
+    _ match {
+      case LabelStatement(label) => Some(Pair(label, statements.indexOf(label)))
+      case _ => None
+    }
+  }
+  val labelTable = Map(labelStatements: _*)
+  val handlers = statements flatMap {
     _ match {
       case CatchDirective(begin, end, handler) =>
-        ExceptionHandler(labelTable(begin), labelTable(end), handler)
-      case _ => throw ImpossibleException
+        Some(ExceptionHandler(labelTable(begin), labelTable(end), handler))
+      case _ => None
     }
   }
 
