@@ -65,8 +65,6 @@ object ToyParser extends RegexParsers {
   def stmt: Parser[Statement] = (labelStatement | gotoStatement | assignStatement | condStatement
       | functionCall | returnStatement | catchDirective | moveResult | throwStatement)
       
-  // crashes when there are no statements - not sure why
-  // rep definitely accepts a length of 0
   def fun: Parser[Function] = functionDeclaration ~ rep(stmt) ~ functionEnd map {
     case decl ~ stmts ~ end => decl match {
       case FunctionDeclaration(name, vars) => Function(name, vars, stmts)
