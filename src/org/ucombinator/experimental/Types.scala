@@ -21,9 +21,9 @@ package org.ucombinator.experimental
 
 import scala.language.postfixOps
 import scala.collection.immutable.HashMap
-
 import TypeAliases._
 import scala.collection.GenTraversableOnce
+import scala.reflect.ClassTag
 
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
@@ -34,11 +34,19 @@ case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
 case class Comparison(lhs: Expression, rhs: Expression) extends Expression
 case class Variable(v: String) extends Expression
 
+case object ArithmeticOnNoValueException extends RuntimeException
 trait Value extends Expression with Storable {
   def +(v: Value): Value
   def *(v: Value): Value
+  def noValue: Value
 }
-case class ConcreteInt(v: Int) extends Value {
+abstract sealed class ConcreteValue extends Value
+case object NoConcreteInt extends ConcreteValue {
+  def +(v: Value): Value = throw ArithmeticOnNoValueException
+  def *(v: Value): Value = throw ArithmeticOnNoValueException
+  override def noValue: ConcreteValue = this
+}
+case class ConcreteInt(v: Int) extends ConcreteValue {
   override def +(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v + i)
     case _ => value + this
@@ -47,6 +55,7 @@ case class ConcreteInt(v: Int) extends Value {
     case ConcreteInt(i) => ConcreteInt(v * i)
     case _ => value * this
   }
+  override def noValue: ConcreteValue = NoConcreteInt
 }
 trait AbstractValue extends Value {
   def abstractValue(ci: ConcreteInt): AbstractValue
@@ -64,6 +73,7 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
         (oP && positive) || (oN && negative))
   }
   def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
+  override def noValue: SignInt = none
 }
 abstract class LessMoreInt extends AbstractValue {
   override def abstractValue(ci: ConcreteInt): LessMoreInt = ci.v match {
@@ -165,7 +175,7 @@ case object ResultAddress extends ValueAddress
 object TypeAliases {
   type Env = Map[Variable, Address]
   case object StoreTypeException extends RuntimeException
-  case class Store[Stored <: Value](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
+  case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
     def empty: Store[Stored] = Store(values.empty, stack.empty)
     def apply(va: ValueAddress): Stored = values(va)
     def apply(ka: KontAddress): Kontinuation = stack(ka)
@@ -213,12 +223,15 @@ object TypeAliases {
   val n = new SignInt(false, true, true)
   val z = new SignInt(true, false, true)
   val p = new SignInt(true, true, false)
+  val none = new SignInt(false, false, false)
 }
 case class Label(l: String)
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
 
 abstract sealed class Kontinuation extends Storable
-case class ConcreteKontinuation[Stored <: Value](val env: Env, val taintedAddrs: Set[Address], val contextTaint: Set[Int], val f: Function, val ln: Int, val nextAddr: KontAddress) extends Kontinuation {
+case class ConcreteKontinuation[Stored <: Value](val env: Env, val taintedAddrs: Set[Address],
+  val contextTaint: Set[Pair[Function, Int]], val f: Function, val ln: Int,
+  val nextAddr: KontAddress) extends Kontinuation {
   def call(s: Store[Stored], result: Stored): State[Stored] =
     State(ln, f, env, s + (ResultAddress, result), taintedAddrs, contextTaint, s(nextAddr))
   def call(s: Store[Stored]): State[Stored] =
