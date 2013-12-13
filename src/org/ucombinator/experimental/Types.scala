@@ -52,11 +52,11 @@ trait AbstractValue extends Value {
   def abstractValue(ci: ConcreteInt): AbstractValue
 }
 case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends AbstractValue {
-  override def +(v: Value): Value = v match {
+  override def +(v: Value): SignInt = v match {
     case ci: ConcreteInt => SignInt.this + abstractValue(ci)
     case SignInt(nN, nZ, nP) => SignInt(nN || negative, (zero && nZ) || (positive && nN) || (negative && nP), nP || positive)
   }
-  override def *(v: Value): Value = v match {
+  override def *(v: Value): SignInt = v match {
     case ci: ConcreteInt => this * abstractValue(ci)
     case SignInt(oN, oZ, oP) =>
       SignInt((oP && negative) || (oN && positive),
@@ -64,6 +64,94 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
         (oP && positive) || (oN && negative))
   }
   def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
+}
+abstract class LessMoreInt extends AbstractValue {
+  override def abstractValue(ci: ConcreteInt): LessMoreInt = ci.v match {
+    case i: Int if i < -1 => Less
+    case -1 => NegativeOne
+    case 0 => Zero
+    case 1 => One
+    case i: Int if i > 1 => More
+  }
+}
+object Less extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this + abstractValue(ci)
+    case More => AnyLMI
+    // TODO imprecise in the case of One
+    case lmi: LessMoreInt if lmi != More => Less
+  }
+  override def *(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this * abstractValue(ci)
+    case Less => More
+    case NegativeOne => More
+    case Zero => Zero
+    case One => Less
+    case More => Less
+  }
+}
+object NegativeOne extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this + abstractValue(ci)
+    case Less => Less
+    case NegativeOne => Less
+    case Zero => NegativeOne
+    case One => Zero
+    // TODO imprecise
+    case More => AnyLMI
+  }
+  override def *(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => abstractValue(ci)
+    case lmi: LessMoreInt => lmi match {
+      case More => Less
+      case One => NegativeOne
+      case Zero => Zero
+      case NegativeOne => One
+      case Less => More
+    }
+  }
+}
+object Zero extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this + abstractValue(ci)
+    case lmi: LessMoreInt => lmi
+  }
+  override def *(v: Value): LessMoreInt = this
+}
+object One extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this + abstractValue(ci)
+    // TODO imprecise
+    case Less => AnyLMI
+    case NegativeOne => Zero
+    case Zero => One
+    case One => More
+    case More => More
+  }
+  override def *(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => abstractValue(ci)
+    case lmi: LessMoreInt => lmi
+  }
+}
+object More extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this + abstractValue(ci)
+    case Less => AnyLMI
+    // TODO imprecise in the case of NegativeOne
+    case lmi: LessMoreInt if lmi != Less => More
+  }
+  override def *(v: Value): LessMoreInt = v match {
+    case ci: ConcreteInt => this * abstractValue(ci)
+    case Less => Less
+    case NegativeOne => Less
+    case Zero => Zero
+    case One => More
+    case More => More
+  }
+}
+object AnyLMI extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = this
+  override def *(v: Value): LessMoreInt = this
 }
 
 sealed trait Storable
