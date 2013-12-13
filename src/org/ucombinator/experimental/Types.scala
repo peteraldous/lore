@@ -83,6 +83,7 @@ abstract class LessMoreInt extends AbstractValue {
     case 1 => One
     case i: Int if i > 1 => More
   }
+  override def noValue: LessMoreInt = NoLMI
 }
 object Less extends LessMoreInt {
   override def +(v: Value): LessMoreInt = v match {
@@ -162,6 +163,10 @@ object More extends LessMoreInt {
 object AnyLMI extends LessMoreInt {
   override def +(v: Value): LessMoreInt = this
   override def *(v: Value): LessMoreInt = this
+}
+object NoLMI extends LessMoreInt {
+  override def +(v: Value): LessMoreInt = throw ArithmeticOnNoValueException
+  override def *(v: Value): LessMoreInt = throw ArithmeticOnNoValueException
 }
 
 sealed trait Storable
