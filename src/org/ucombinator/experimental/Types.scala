@@ -21,9 +21,9 @@ package org.ucombinator.experimental
 
 import scala.language.postfixOps
 import scala.collection.immutable.HashMap
-
 import TypeAliases._
 import scala.collection.GenTraversableOnce
+import scala.reflect.ClassTag
 
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
@@ -77,7 +77,7 @@ case object ResultAddress extends ValueAddress
 object TypeAliases {
   type Env = Map[Variable, Address]
   case object StoreTypeException extends RuntimeException
-  case class Store[Stored <: Value](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
+  case class Store[Stored <: Value : ClassTag](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
     def empty: Store[Stored] = Store(values.empty, stack.empty)
     def apply(va: ValueAddress): Stored = values(va)
     def apply(ka: KontAddress): Kontinuation = stack(ka)
