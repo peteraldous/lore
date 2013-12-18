@@ -17,6 +17,8 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+// TODO matches are non-exhaustive now that no-value objects have been introduced.
+
 package org.ucombinator.experimental
 
 import scala.language.postfixOps
@@ -34,19 +36,11 @@ case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
 case class Comparison(lhs: Expression, rhs: Expression) extends Expression
 case class Variable(v: String) extends Expression
 
-case object ArithmeticOnNoValueException extends RuntimeException
 trait Value extends Expression with Storable {
   def +(v: Value): Value
   def *(v: Value): Value
-  def noValue: Value
 }
-abstract sealed class ConcreteValue extends Value
-case object NoConcreteInt extends ConcreteValue {
-  def +(v: Value): Value = throw ArithmeticOnNoValueException
-  def *(v: Value): Value = throw ArithmeticOnNoValueException
-  override def noValue: ConcreteValue = this
-}
-case class ConcreteInt(v: Int) extends ConcreteValue {
+case class ConcreteInt(v: Int) extends Value {
   override def +(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v + i)
     case _ => value + this
@@ -55,7 +49,6 @@ case class ConcreteInt(v: Int) extends ConcreteValue {
     case ConcreteInt(i) => ConcreteInt(v * i)
     case _ => value * this
   }
-  override def noValue: ConcreteValue = NoConcreteInt
 }
 trait AbstractValue extends Value {
   def abstractValue(ci: ConcreteInt): AbstractValue
@@ -73,7 +66,6 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
         (oP && positive) || (oN && negative))
   }
   def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
-  override def noValue: SignInt = none
 }
 abstract class LessMoreInt extends AbstractValue {
   override def abstractValue(ci: ConcreteInt): LessMoreInt = ci.v match {
@@ -83,7 +75,6 @@ abstract class LessMoreInt extends AbstractValue {
     case 1 => One
     case i: Int if i > 1 => More
   }
-  override def noValue: LessMoreInt = NoLMI
 }
 object Less extends LessMoreInt {
   override def +(v: Value): LessMoreInt = v match {
@@ -163,10 +154,6 @@ object More extends LessMoreInt {
 object AnyLMI extends LessMoreInt {
   override def +(v: Value): LessMoreInt = this
   override def *(v: Value): LessMoreInt = this
-}
-object NoLMI extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = throw ArithmeticOnNoValueException
-  override def *(v: Value): LessMoreInt = throw ArithmeticOnNoValueException
 }
 
 sealed trait Storable
