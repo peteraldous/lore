@@ -6,7 +6,7 @@ case class State[Stored <: Value](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
   val stack: Kontinuation) {
   def next: State[Stored] = {
-    val noResultStore = store + Pair(ResultAddress, store(ResultAddress).noValue)
+    val noResultStore = store - ResultAddress
     val noResultTaintStore = taintStore - ResultAddress
     f.statements(ln) match {
       case LabelStatement(l) => State(ln+1, f, env, noResultStore, noResultTaintStore,

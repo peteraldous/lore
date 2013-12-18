@@ -186,6 +186,8 @@ object TypeAliases {
       case Nil => this
       case pair :: rest => (this + pair) ++ rest
     }
+    def -(va: ValueAddress): Store[Stored] = Store(values - va, stack)
+    def -(ka: KontAddress): Store[Stored] = Store(values, stack - ka)
   }
   object Env {
     def apply(): Env = Map.empty
