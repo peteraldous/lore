@@ -161,6 +161,7 @@ sealed trait Storable
 abstract sealed class Address
 abstract sealed class ValueAddress extends Address
 case class BindAddress(a: Int) extends ValueAddress
+case class MonoAddress(v: Variable) extends ValueAddress
 case class KontAddress(a: Int) extends Address
 case object ResultAddress extends ValueAddress
 
