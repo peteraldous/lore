@@ -39,6 +39,7 @@ case class Variable(v: String) extends Expression
 trait Value extends Expression with Storable {
   def +(v: Value): Value
   def *(v: Value): Value
+  def ==(v: Value): Value
 }
 case class ConcreteInt(v: Int) extends Value {
   override def +(value: Value): Value = value match {
@@ -48,6 +49,11 @@ case class ConcreteInt(v: Int) extends Value {
   override def *(value: Value): Value = value match {
     case ConcreteInt(i) => ConcreteInt(v * i)
     case _ => value * this
+  }
+  override def ==(value: Value): Value = value match {
+    case ConcreteInt(i) if i == v => ConcreteInt(1)
+    case ConcreteInt(i) if i != v => ConcreteInt(0)
+    case _ => value == this
   }
 }
 trait AbstractValue extends Value {
@@ -65,6 +71,13 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
         oZ || zero,
         (oP && positive) || (oN && negative))
   }
+  override def ==(v: Value): SignInt = v match {
+    case ci: ConcreteInt => this == abstractValue(ci)
+    case SignInt(oN, oZ, oP) =>
+      val mayBeEqual = negative == oN || zero == oZ || positive == oP
+      val mayBeUnequal = negative != oN || zero != oZ || positive != oP || negative || positive
+      SignInt(false, mayBeUnequal, mayBeEqual)
+  }
   def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
 }
 abstract class LessMoreInt extends AbstractValue {
@@ -74,6 +87,16 @@ abstract class LessMoreInt extends AbstractValue {
     case 0 => Zero
     case 1 => One
     case i: Int if i > 1 => More
+  }
+  override def ==(v: Value) = v match {
+    case ci: ConcreteInt => this == abstractValue(ci)
+    // TODO imprecise (0 or 1)
+    case Less => AnyLMI
+    // TODO imprecise (0 or 1)
+    case More => AnyLMI
+    case AnyLMI => AnyLMI
+    case lmi: LessMoreInt if lmi == this => One
+    case lmi: LessMoreInt if lmi != this => Zero
   }
 }
 object Less extends LessMoreInt {

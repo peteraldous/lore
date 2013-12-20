@@ -18,7 +18,12 @@ case class State[Stored <: Value](val ln: Int, val f: Function, val env: Env,
     val pass = State(ln + 1, f, env, noResultStore, noResultTaintStore, contextTaint, stack)
     f.statements(ln) match {
       case LabelStatement(l) => pass
-      case AssignmentStatement(v, e) => throw NotImplementedException
+      case AssignmentStatement(v, e) =>
+        val newEnv = maybeAlloc(v)
+        val value = Evaluator.eval[Stored](e, env, store)
+        val newStore = noResultStore + Pair(newEnv(v), value)
+        // TODO taint
+        State(ln + 1, f, newEnv, newStore, taintStore, contextTaint, stack)
       case GotoStatement(l) => throw NotImplementedException
       case IfStatement(condition, l) => throw NotImplementedException
       case FunctionCall(fun, exps) => throw NotImplementedException
