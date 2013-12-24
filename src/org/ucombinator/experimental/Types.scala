@@ -247,7 +247,7 @@ case class Label(l: String)
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
 
 abstract sealed class Kontinuation extends Storable
-case class ConcreteKontinuation[Stored <: Value](val env: Env, val taintedAddrs: Set[Address],
+case class ConcreteKontinuation[Stored <: Value : ClassTag](val env: Env, val taintedAddrs: Set[Address],
   val contextTaint: Set[Pair[Function, Int]], val f: Function, val ln: Int,
   val nextAddr: KontAddress) extends Kontinuation {
   def call(s: Store[Stored], result: Stored): State[Stored] =

@@ -1,10 +1,11 @@
 package org.ucombinator.experimental
 
 import TypeAliases._
+import scala.reflect.ClassTag
 
 case object NestedFunctionException extends RuntimeException
 
-case class State[Stored <: Value](val ln: Int, val f: Function, val env: Env,
+case class State[Stored <: Value : ClassTag](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
   val stack: Kontinuation) {
   def next: State[Stored] = {
