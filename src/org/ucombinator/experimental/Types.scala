@@ -188,46 +188,38 @@ case class MonoAddress(v: Variable) extends ValueAddress
 case class KontAddress(a: Int) extends Address
 case object ResultAddress extends ValueAddress
 
+case object StoreTypeException extends RuntimeException
+case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
+  def empty: Store[Stored] = Store(values.empty, stack.empty)
+  def apply(va: ValueAddress): Stored = values(va)
+  def apply(ka: KontAddress): Kontinuation = stack(ka)
+  def +(a: ValueAddress, v: Stored): Store[Stored] = Store(values + Pair(a, v), stack)
+  def +(ka: KontAddress, k: Kontinuation): Store[Stored] = Store(values, stack + Pair(ka, k))
+  def +(p: Pair[Address, Storable]): Store[Stored] = p match {
+    case (va: ValueAddress, s: Stored) => Store(values + Pair(va, s), stack)
+    case (ka: KontAddress, k: Kontinuation) => Store(values, stack + Pair(ka, k))
+    case _ => throw StoreTypeException
+  }
+  def ++(pairs: Pair[Address, Storable]*): Store[Stored] = pairs match {
+    case Nil => this
+    case pair :: rest => (this + pair) ++ rest
+  }
+  def ++(l: List[Pair[Address, Storable]]): Store[Stored] = l match {
+    case Nil => this
+    case pair :: rest => (this + pair) ++ rest
+  }
+  def -(va: ValueAddress): Store[Stored] = Store(values - va, stack)
+  def -(ka: KontAddress): Store[Stored] = Store(values, stack - ka)
+}
+
 object TypeAliases {
   type Env = Map[Variable, Address]
-  case object StoreTypeException extends RuntimeException
-  case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
-    def empty: Store[Stored] = Store(values.empty, stack.empty)
-    def apply(va: ValueAddress): Stored = values(va)
-    def apply(ka: KontAddress): Kontinuation = stack(ka)
-    def +(a: ValueAddress, v: Stored): Store[Stored] = Store(values + Pair(a, v), stack)
-    def +(ka: KontAddress, k: Kontinuation): Store[Stored] = Store(values, stack + Pair(ka, k))
-    def +(p: Pair[Address, Storable]): Store[Stored] = p match {
-      case (va: ValueAddress, s: Stored) => Store(values + Pair(va, s), stack)
-      case (ka: KontAddress, k: Kontinuation) => Store(values, stack + Pair(ka, k))
-      case _ => throw StoreTypeException
-    }
-    def ++(pairs: Pair[Address, Storable]*): Store[Stored] = pairs match {
-      case Nil => this
-      case pair :: rest => (this + pair) ++ rest
-    }
-    def ++(l: List[Pair[Address, Storable]]): Store[Stored] = l match {
-      case Nil => this
-      case pair :: rest => (this + pair) ++ rest
-    }
-    def -(va: ValueAddress): Store[Stored] = Store(values - va, stack)
-    def -(ka: KontAddress): Store[Stored] = Store(values, stack - ka)
-  }
   object Env {
     def apply(): Env = Map.empty
     def apply(v: Variable, a: Address): Env = Map(v -> a)
     def apply(pairs: Pair[Variable, Address]*): Env = Map(pairs: _*)
     def apply(l: List[Pair[Variable, Address]]): Env = Map(l: _*)
   }
-  /*
-  object Store {
-    def apply: Store[Stored] = new Store(Map.empty)
-    def empty: Store[Stored] = new Store(Map.empty)
-    def apply(a: Address, v: Value): Store[Stored] = new Store(Map(a -> v))
-    def apply(pairs: Pair[Address, Value]*): Store[Stored] = new Store(Map(pairs: _*))
-    def apply(l: List[Pair[Address, Value]]): Store[Stored] = new Store(Map(l: _*))
-  }
-  */
   case class ConcreteResult(val value: Value, val tainted: Boolean)
   type Result = Option[ConcreteResult]
   object Result {
@@ -247,7 +239,7 @@ case class Label(l: String)
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
 
 abstract sealed class Kontinuation extends Storable
-case class ConcreteKontinuation[Stored <: Value : ClassTag](val env: Env, val taintedAddrs: Set[Address],
+case class ConcreteKontinuation[Stored <: Value: ClassTag](val env: Env, val taintedAddrs: Set[Address],
   val contextTaint: Set[Pair[Function, Int]], val f: Function, val ln: Int,
   val nextAddr: KontAddress) extends Kontinuation {
   def call(s: Store[Stored], result: Stored): State[Stored] =
