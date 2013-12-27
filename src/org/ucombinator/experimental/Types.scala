@@ -86,115 +86,67 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
   override def mayBeZero: Boolean = zero
   override def mayBeNonzero: Boolean = positive || negative
 }
-abstract class LessMoreInt extends AbstractValue {
-  override def abstractValue(ci: ConcreteInt): LessMoreInt = ci.v match {
-    case i: Int if i < -1 => Less
-    case -1 => NegativeOne
-    case 0 => Zero
-    case 1 => One
-    case i: Int if i > 1 => More
+case class LessMoreInt(val less: Boolean, val negativeOne: Boolean, val zero: Boolean,
+  val one: Boolean, val more: Boolean) extends AbstractValue {
+  override def abstractValue(ci: ConcreteInt): LessMoreInt = {
+    val v = ci.v
+    LessMoreInt(v < -1, v == -1, v == 0, v == 1, v > 1)
   }
   override def ==(v: Value) = v match {
     case ci: ConcreteInt => this == abstractValue(ci)
-    // TODO imprecise (0 or 1)
-    case Less => AnyLMI
-    // TODO imprecise (0 or 1)
-    case More => AnyLMI
-    case AnyLMI => AnyLMI
-    case lmi: LessMoreInt if lmi == this => One
-    case lmi: LessMoreInt if lmi != this => Zero
-  }
-}
-object Less extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => this + abstractValue(ci)
-    case More => AnyLMI
-    // TODO imprecise in the case of One
-    case lmi: LessMoreInt if lmi != More => Less
-  }
-  override def *(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => this * abstractValue(ci)
-    case Less => More
-    case NegativeOne => More
-    case Zero => Zero
-    case One => Less
-    case More => Less
-  }
-  override def mayBeZero: Boolean = false
-  override def mayBeNonzero: Boolean = true
-}
-object NegativeOne extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => this + abstractValue(ci)
-    case Less => Less
-    case NegativeOne => Less
-    case Zero => NegativeOne
-    case One => Zero
-    // TODO imprecise
-    case More => AnyLMI
-  }
-  override def *(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => abstractValue(ci)
-    case lmi: LessMoreInt => lmi match {
-      case More => Less
-      case One => NegativeOne
-      case Zero => Zero
-      case NegativeOne => One
-      case Less => More
+    case lmi: LessMoreInt => if (this equals lmi) {
+      LessMoreInt(false, false, false, true, false)
+    } else {
+      LessMoreInt(false, false, true, false, false)
     }
   }
-  override def mayBeZero: Boolean = false
-  override def mayBeNonzero: Boolean = true
-}
-object Zero extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = v match {
+  override def +(v: Value) = v match {
     case ci: ConcreteInt => this + abstractValue(ci)
-    case lmi: LessMoreInt => lmi
+    case lmi: LessMoreInt =>
+      val couldBeLess = lmi.less || less || (lmi.negativeOne && negativeOne)
+      val couldBeNegativeOne = (
+        (lmi.zero && negativeOne) ||
+        (lmi.negativeOne && zero) ||
+        (lmi.less && one) ||
+        (lmi.one && less) ||
+        (lmi.less && more) ||
+        (lmi.more && less))
+      val couldBeZero = (
+        (lmi.zero && zero) ||
+        (lmi.negativeOne && one) ||
+        (lmi.one && negativeOne) ||
+        (lmi.less && more) ||
+        (lmi.more && less))
+      val couldBeOne = (
+        (lmi.zero && one) ||
+        (lmi.one && zero) ||
+        (lmi.more && negativeOne) ||
+        (lmi.negativeOne && more) ||
+        (lmi.less && more) ||
+        (lmi.more && less))
+      val couldBeMore = lmi.more || more || (lmi.one && one)
+      LessMoreInt(couldBeLess, couldBeNegativeOne, couldBeZero, couldBeOne, couldBeMore)
   }
-  override def *(v: Value): LessMoreInt = this
-  override def mayBeZero: Boolean = true
-  override def mayBeNonzero: Boolean = false
-}
-object One extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = v match {
+  override def *(v: Value) = v match {
     case ci: ConcreteInt => this + abstractValue(ci)
-    // TODO imprecise
-    case Less => AnyLMI
-    case NegativeOne => Zero
-    case Zero => One
-    case One => More
-    case More => More
+    case lmi: LessMoreInt =>
+      val couldBeLess = (
+          (lmi.less && (one || more)) ||
+          ((lmi.one || lmi.more) && less) ||
+          (lmi.more && negativeOne) ||
+          (lmi.negativeOne && more))
+      val couldBeNegativeOne = (lmi.one && negativeOne) || (lmi.negativeOne && one)
+      val couldBeZero = lmi.zero || zero
+      val couldBeOne = (lmi.one && one) || (lmi.negativeOne && negativeOne)
+      val couldBeMore = (
+          (lmi.more && (one || more)) ||
+          ((lmi.negativeOne || lmi.less) && less) ||
+          (lmi.less && negativeOne) ||
+          (lmi.one && more))
+      LessMoreInt(couldBeLess, couldBeNegativeOne, couldBeZero, couldBeOne, couldBeMore)
   }
-  override def *(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => abstractValue(ci)
-    case lmi: LessMoreInt => lmi
-  }
-  override def mayBeZero: Boolean = false
-  override def mayBeNonzero: Boolean = true
-}
-object More extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => this + abstractValue(ci)
-    case Less => AnyLMI
-    // TODO imprecise in the case of NegativeOne
-    case lmi: LessMoreInt if lmi != Less => More
-  }
-  override def *(v: Value): LessMoreInt = v match {
-    case ci: ConcreteInt => this * abstractValue(ci)
-    case Less => Less
-    case NegativeOne => Less
-    case Zero => Zero
-    case One => More
-    case More => More
-  }
-  override def mayBeZero: Boolean = false
-  override def mayBeNonzero: Boolean = true
-}
-object AnyLMI extends LessMoreInt {
-  override def +(v: Value): LessMoreInt = this
-  override def *(v: Value): LessMoreInt = this
-  override def mayBeZero: Boolean = true
-  override def mayBeNonzero: Boolean = true
+  override def mayBeZero: Boolean = zero
+  override def mayBeNonzero: Boolean = less || negativeOne || one || more
 }
 
 sealed trait Storable
