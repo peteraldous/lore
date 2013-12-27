@@ -195,15 +195,6 @@ object TypeAliases {
   object Result {
     def apply(v: Value, t: Boolean): Result = Some(ConcreteResult(v, t))
   }
-
-  val nzp = new SignInt(false, false, false)
-  val nz = new SignInt(false, false, true)
-  val np = new SignInt(false, true, false)
-  val zp = new SignInt(true, false, false)
-  val n = new SignInt(false, true, true)
-  val z = new SignInt(true, false, true)
-  val p = new SignInt(true, true, false)
-  val none = new SignInt(false, false, false)
 }
 case class Label(l: String)
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
