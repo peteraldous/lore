@@ -17,8 +17,6 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-// TODO matches are non-exhaustive now that no-value objects have been introduced.
-
 package org.ucombinator.experimental
 
 import scala.language.postfixOps
