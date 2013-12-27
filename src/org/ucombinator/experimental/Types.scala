@@ -40,6 +40,8 @@ trait Value extends Expression with Storable {
   def +(v: Value): Value
   def *(v: Value): Value
   def ==(v: Value): Value
+  def mayBeZero: Boolean
+  def mayBeNonzero: Boolean
 }
 case class ConcreteInt(v: Int) extends Value {
   override def +(value: Value): Value = value match {
@@ -55,6 +57,8 @@ case class ConcreteInt(v: Int) extends Value {
     case ConcreteInt(i) if i != v => ConcreteInt(0)
     case _ => value == this
   }
+  override def mayBeZero: Boolean = v == 0
+  override def mayBeNonzero: Boolean = v != 0
 }
 trait AbstractValue extends Value {
   def abstractValue(ci: ConcreteInt): AbstractValue
@@ -79,6 +83,8 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
       SignInt(false, mayBeUnequal, mayBeEqual)
   }
   def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
+  override def mayBeZero: Boolean = zero
+  override def mayBeNonzero: Boolean = positive || negative
 }
 abstract class LessMoreInt extends AbstractValue {
   override def abstractValue(ci: ConcreteInt): LessMoreInt = ci.v match {
@@ -114,6 +120,8 @@ object Less extends LessMoreInt {
     case One => Less
     case More => Less
   }
+  override def mayBeZero: Boolean = false
+  override def mayBeNonzero: Boolean = true
 }
 object NegativeOne extends LessMoreInt {
   override def +(v: Value): LessMoreInt = v match {
@@ -135,6 +143,8 @@ object NegativeOne extends LessMoreInt {
       case Less => More
     }
   }
+  override def mayBeZero: Boolean = false
+  override def mayBeNonzero: Boolean = true
 }
 object Zero extends LessMoreInt {
   override def +(v: Value): LessMoreInt = v match {
@@ -142,6 +152,8 @@ object Zero extends LessMoreInt {
     case lmi: LessMoreInt => lmi
   }
   override def *(v: Value): LessMoreInt = this
+  override def mayBeZero: Boolean = true
+  override def mayBeNonzero: Boolean = false
 }
 object One extends LessMoreInt {
   override def +(v: Value): LessMoreInt = v match {
@@ -157,6 +169,8 @@ object One extends LessMoreInt {
     case ci: ConcreteInt => abstractValue(ci)
     case lmi: LessMoreInt => lmi
   }
+  override def mayBeZero: Boolean = false
+  override def mayBeNonzero: Boolean = true
 }
 object More extends LessMoreInt {
   override def +(v: Value): LessMoreInt = v match {
@@ -173,10 +187,14 @@ object More extends LessMoreInt {
     case One => More
     case More => More
   }
+  override def mayBeZero: Boolean = false
+  override def mayBeNonzero: Boolean = true
 }
 object AnyLMI extends LessMoreInt {
   override def +(v: Value): LessMoreInt = this
   override def *(v: Value): LessMoreInt = this
+  override def mayBeZero: Boolean = true
+  override def mayBeNonzero: Boolean = true
 }
 
 sealed trait Storable
