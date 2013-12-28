@@ -20,8 +20,22 @@
 package org.ucombinator.experimental
 
 import scala.io.Source
+import TypeAliases._
+import scala.reflect.ClassTag
 
 object Analyzer extends App {
+  def inject[Stored <: Value : ClassTag](functionTable: Map[String, Function]): State[Stored] = {
+    State[Stored](0, functionTable("main"), Env(), Store(Map.empty, Map.empty), Set.empty, Set.empty, halt)
+  }
+  
+  // TODO abstract garbage collection
+  def explore[Stored <: Value : ClassTag](queue: List[State[Stored]], seen: Set[State[Stored]]): Set[State[Stored]] = queue match {
+    case Nil => seen
+    case state :: rest if seen contains state => explore(rest, seen)
+    case state :: rest if !(seen contains state) => explore(rest ++ state.next, seen + state)
+  }
+  
   val functionTable = ToyParser.applyFuns(Source.fromInputStream(System.in).getLines.mkString)
   val allocator = MonovariantAllocator
+  
 }
