@@ -39,4 +39,17 @@ case object Evaluator {
         }
     }
   }
+
+  def tainted(exp: Expression, env: Env, taintStore: Set[Address]): Boolean = {
+    def innerTainted(exp: Expression): Boolean = {
+      exp match {
+        case Addition(lhs, rhs) => innerTainted(lhs) || innerTainted(rhs)
+        case Multiplication(lhs, rhs) => innerTainted(lhs) || innerTainted(rhs)
+        case Comparison(lhs, rhs) => innerTainted(lhs) || innerTainted(rhs)
+        case v: Variable => taintStore contains env(v)
+        case v: Value => false
+      }
+    }
+    innerTainted(exp)
+  }
 }

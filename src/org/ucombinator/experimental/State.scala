@@ -21,11 +21,12 @@ package org.ucombinator.experimental
 
 import TypeAliases._
 import scala.reflect.ClassTag
+import scala.language.postfixOps
 
 case object NestedFunctionException extends RuntimeException
 case object NoSuchLabelException extends RuntimeException
 
-case class State[Stored <: Value : ClassTag](val ln: Int, val f: Function, val env: Env,
+case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
   val stack: Kontinuation) {
   def next: Set[State[Stored]] = {
@@ -36,27 +37,52 @@ case class State[Stored <: Value : ClassTag](val ln: Int, val f: Function, val e
         env + Pair(v, Analyzer.allocator.alloc(v))
     val noResultStore = store - ResultAddress
     val noResultTaintStore = taintStore - ResultAddress
-    val pass = Set(State(ln + 1, f, env, noResultStore, noResultTaintStore, contextTaint, stack))
+    // TODO must-reach
+    val paredContextTaint = contextTaint
+    val pass = Set(State(ln + 1, f, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
     f.statements(ln) match {
+      // Label
       case LabelStatement(l) => pass
+      // Assignment
       case AssignmentStatement(v, e) =>
         val newEnv = maybeAlloc(v)
         val value = Evaluator.eval[Stored](e, env, store)
         val newStore = noResultStore + Pair(newEnv(v), value)
-        // TODO taint
-        Set(State(ln + 1, f, newEnv, newStore, taintStore, contextTaint, stack))
+        val newTaintStore = if (!(contextTaint isEmpty) || Evaluator.tainted(e, env, taintStore)) {
+          taintStore + newEnv(v)
+        } else {
+          taintStore
+        }
+        Set(State(ln + 1, f, newEnv, newStore, newTaintStore, paredContextTaint, stack))
+      // Goto
       case GotoStatement(l) =>
         val target = f.labelTable.get(l) match {
           case Some(i) => i
           case None => throw NoSuchLabelException
         }
-        Set(State(target, f, env, noResultStore, noResultTaintStore, contextTaint, stack))
-      case IfStatement(condition, l) => throw NotImplementedException
+        Set(State(target, f, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
+      // If
+      case IfStatement(condition, l) =>
+        val cond = Evaluator.eval(condition, env, store)
+        val target = f.labelTable.get(l) match {
+          case Some(i) => i
+          case None => throw NoSuchLabelException
+        }
+        val jump = Set(State(target, f, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
+        val maybeJump: Set[State[Stored]] = if (cond.mayBeNonzero) jump else Set.empty
+        val maybePass: Set[State[Stored]] = if (cond.mayBeZero) pass else Set.empty
+        maybeJump | maybePass
+      // Function call
       case FunctionCall(fun, exps) => throw NotImplementedException
+      // Return
       case ReturnStatement(e) => throw NotImplementedException
+      // Throw
       case ThrowStatement(e) => throw NotImplementedException
+      // Catch (handled statically)
       case CatchDirective(begin, end, handler) => pass
+      // Function declaration (should never occur inside a function)
       case FunctionDeclaration(name, vars) => throw NestedFunctionException
+      // Function end
       case FunctionEnd => throw NotImplementedException
       case MoveResult(v) =>
         val newEnv = maybeAlloc(v)
@@ -66,8 +92,7 @@ case class State[Stored <: Value : ClassTag](val ln: Int, val f: Function, val e
             noResultTaintStore + newEnv(v)
           else
             noResultTaintStore
-        State(ln + 1, f, newEnv, newStore, newTaintStore, contextTaint, stack)
-        throw NotImplementedException
+        Set(State(ln + 1, f, newEnv, newStore, newTaintStore, paredContextTaint, stack))
     }
   }
 }
