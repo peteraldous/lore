@@ -24,18 +24,27 @@ import TypeAliases._
 import scala.reflect.ClassTag
 
 object Analyzer extends App {
-  def inject[Stored <: Value : ClassTag](functionTable: Map[String, Function]): State[Stored] = {
+  def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function]): State[Stored] = {
     State[Stored](0, functionTable("main"), Env(), Store(Map.empty, Map.empty), Set.empty, Set.empty, halt)
   }
-  
+
   // TODO abstract garbage collection
-  def explore[Stored <: Value : ClassTag](queue: List[State[Stored]], seen: Set[State[Stored]]): Set[State[Stored]] = queue match {
+  def explore[Stored <: Value: ClassTag](queue: List[State[Stored]], seen: Set[State[Stored]]): Set[State[Stored]] = queue match {
     case Nil => seen
     case state :: rest if seen contains state => explore(rest, seen)
     case state :: rest if !(seen contains state) => explore(rest ++ state.next, seen + state)
   }
   
+  def significant[Stored <: Value](state: State[Stored]): Boolean = {
+    state.f.isEndOfFunction(state.ln)
+  }
+  
+  def print[Stored <: Value](state: State[Stored]): Unit = println(state)
+
   val functionTable = ToyParser.applyFuns(Source.fromInputStream(System.in).getLines.mkString)
   val allocator = MonovariantAllocator
   
+  val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
+
+  allStates filter significant map print
 }

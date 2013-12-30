@@ -44,6 +44,12 @@ case class Function(val name: String, val params: List[Variable], val statements
     }
   }
 
-  // errors if s refers to a statement not in the function
-  def isEndOfFunction(s: Int): Boolean = statements(s).isEndOfFunction
+  case object StatementNumberOutOfBoundsException extends RuntimeException
+  def isEndOfFunction(s: Int): Boolean = if (statements isDefinedAt s) {
+    statements(s).isEndOfFunction
+  } else {
+    // Errors if s refers to a statement not in the function.
+    // This is reasonable because each function is capped with the FunctionEnd object.
+    throw StatementNumberOutOfBoundsException
+  }
 }
