@@ -96,7 +96,10 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
           exp <- exps
         } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None) flatMap {(a: Option[Address]) => a}
         val newTaintStore = noResultTaintStore ++ (taintedParams)
-        throw NotImplementedException
+        val kontAddr = Analyzer.allocator.kalloc(f, ln)
+        val newNewStore = newStore + Pair(kontAddr, stack)
+        val newStack = ConcreteKontinuation(env, noResultTaintStore, paredContextTaint, f, ln+1, kontAddr)
+        Set(State(0, target, newEnv, newStore, newTaintStore, paredContextTaint, stack))
       // Return
       case ReturnStatement(e) => throw NotImplementedException
       // Throw

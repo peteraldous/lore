@@ -153,9 +153,10 @@ abstract sealed class Address
 abstract sealed class ValueAddress extends Address
 case class BindAddress(a: Int) extends ValueAddress
 case class MonoAddress(v: Variable) extends ValueAddress
-case class KontAddress(a: Int) extends Address
+case class KontAddress(f: Function, i: Int) extends Address
 case object ResultAddress extends ValueAddress
 
+// TODO kontinuations need to merge, not replace each other
 case object StoreTypeException extends RuntimeException
 case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
   def empty: Store[Stored] = Store(values.empty, stack.empty)

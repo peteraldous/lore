@@ -21,10 +21,12 @@ package org.ucombinator.experimental
 
 abstract sealed class Allocator {
   def alloc(v: Variable): ValueAddress
+  def kalloc(f: Function, i: Int): KontAddress
 }
 
 // TODO make more allocators
 
 case object MonovariantAllocator extends Allocator {
   override def alloc(v: Variable): ValueAddress = MonoAddress(v)
+  override def kalloc(f: Function, i: Int): KontAddress = KontAddress(f, i)
 }
