@@ -28,7 +28,7 @@ object Analyzer extends App {
     State[Stored](0, functionTable("main"), Env(), Store(Map.empty, Map.empty), Set.empty, Set.empty, halt)
   }
 
-  // TODO abstract garbage collection
+  // TODO abstract garbage collection - remember to look at all of the environments in the stack
   def explore[Stored <: Value: ClassTag](queue: List[State[Stored]], seen: Set[State[Stored]]): Set[State[Stored]] = queue match {
     case Nil => seen
     case state :: rest if seen contains state => explore(rest, seen)

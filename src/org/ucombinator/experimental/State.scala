@@ -25,6 +25,8 @@ import scala.language.postfixOps
 
 case object NestedFunctionException extends RuntimeException
 case object NoSuchLabelException extends RuntimeException
+case object NoSuchFunctionException extends RuntimeException
+case object ArityMismatchException extends RuntimeException
 
 case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
@@ -68,12 +70,33 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
           case Some(i) => i
           case None => throw NoSuchLabelException
         }
-        val jump = Set(State(target, f, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
+        val jump = Set(State(target, f, env, noResultStore,
+          noResultTaintStore, paredContextTaint, stack))
         val maybeJump: Set[State[Stored]] = if (cond.mayBeNonzero) jump else Set.empty
         val maybePass: Set[State[Stored]] = if (cond.mayBeZero) pass else Set.empty
         maybeJump | maybePass
       // Function call
-      case FunctionCall(fun, exps) => throw NotImplementedException
+      case FunctionCall(fun, exps) =>
+        val target = Analyzer.functionTable.get(fun) match {
+          case Some(f) => f
+          case None => throw NoSuchFunctionException
+        }
+        if (f.params.length != exps.length) throw ArityMismatchException
+        val newEnv = Env(f.params map {
+          (param: Variable) => Pair(param, Analyzer.allocator.alloc(param))
+        })
+        val newStore = noResultStore ++ (f.params zip exps map {
+          (pair: Pair[Variable, Expression]) =>
+            val param: Variable = pair._1
+            val exp: Expression = pair._2
+            Pair(newEnv(param), Evaluator.eval(exp, env, store))
+        })
+        val taintedParams: List[Address] = (for {
+          param <- f.params
+          exp <- exps
+        } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None) flatMap {(a: Option[Address]) => a}
+        val newTaintStore = noResultTaintStore ++ (taintedParams)
+        throw NotImplementedException
       // Return
       case ReturnStatement(e) => throw NotImplementedException
       // Throw
