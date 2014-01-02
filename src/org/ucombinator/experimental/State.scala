@@ -28,7 +28,7 @@ case object NoSuchLabelException extends RuntimeException
 case object NoSuchFunctionException extends RuntimeException
 case object ArityMismatchException extends RuntimeException
 case object BadKontinuationException extends RuntimeException
-
+case class TopLevelException(e: Expression) extends RuntimeException
 
 case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
@@ -96,11 +96,11 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
         val taintedParams: List[Address] = (for {
           param <- f.params
           exp <- exps
-        } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None) flatMap {(a: Option[Address]) => a}
+        } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None) flatMap { (a: Option[Address]) => a }
         val newTaintStore = noResultTaintStore ++ taintedParams
         val kontAddr = Analyzer.allocator.kalloc(f, ln)
         val newNewStore = newStore + Pair(kontAddr, stack)
-        val newStack = ConcreteKontinuation(env, noResultTaintStore, paredContextTaint, f, ln+1, kontAddr)
+        val newStack = ConcreteKontinuation(env, noResultTaintStore, paredContextTaint, f, ln + 1, kontAddr)
         Set(State(0, target, newEnv, newStore, newTaintStore, paredContextTaint, stack))
       // Return
       case ReturnStatement(e) => stack match {
@@ -116,8 +116,21 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
         case `halt` => Set.empty
         case _ => throw BadKontinuationException
       }
-      // TODO Throw
-      case ThrowStatement(e) => throw NotImplementedException
+      // Throw
+      case ThrowStatement(e) =>
+        def throwException(ln: Int, f: Function): Set[State[Stored]] = {
+          f.findExceptionHandlerTarget(ln) match {
+            case Some(l) =>
+              Set(State(f.labelTable(l), f, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
+            case None => stack match {
+              case `halt` => throw TopLevelException(e)
+              case ConcreteKontinuation(env, ts, contextTaint, fun, line, nextAddr) =>
+                throwException(line, fun)
+              case _ => throw BadKontinuationException
+            }
+          }
+        }
+        throwException(ln, f)
       // Catch (handled statically)
       case CatchDirective(begin, end, handler) => pass
       // Function declaration (should never occur inside a function)
