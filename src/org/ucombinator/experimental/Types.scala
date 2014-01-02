@@ -129,18 +129,18 @@ case class LessMoreInt(val less: Boolean, val negativeOne: Boolean, val zero: Bo
     case ci: ConcreteInt => this + abstractValue(ci)
     case lmi: LessMoreInt =>
       val couldBeLess = (
-          (lmi.less && (one || more)) ||
-          ((lmi.one || lmi.more) && less) ||
-          (lmi.more && negativeOne) ||
-          (lmi.negativeOne && more))
+        (lmi.less && (one || more)) ||
+        ((lmi.one || lmi.more) && less) ||
+        (lmi.more && negativeOne) ||
+        (lmi.negativeOne && more))
       val couldBeNegativeOne = (lmi.one && negativeOne) || (lmi.negativeOne && one)
       val couldBeZero = lmi.zero || zero
       val couldBeOne = (lmi.one && one) || (lmi.negativeOne && negativeOne)
       val couldBeMore = (
-          (lmi.more && (one || more)) ||
-          ((lmi.negativeOne || lmi.less) && less) ||
-          (lmi.less && negativeOne) ||
-          (lmi.one && more))
+        (lmi.more && (one || more)) ||
+        ((lmi.negativeOne || lmi.less) && less) ||
+        (lmi.less && negativeOne) ||
+        (lmi.one && more))
       LessMoreInt(couldBeLess, couldBeNegativeOne, couldBeZero, couldBeOne, couldBeMore)
   }
   override def mayBeZero: Boolean = zero
@@ -156,17 +156,21 @@ case class MonoAddress(v: Variable) extends ValueAddress
 case class KontAddress(f: Function, i: Int) extends Address
 case object ResultAddress extends ValueAddress
 
-// TODO kontinuations need to merge, not replace each other
 case object StoreTypeException extends RuntimeException
-case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored], stack: Map[KontAddress, Kontinuation]) {
+case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored],
+  stack: Map[KontAddress, Set[Kontinuation]]) {
   def empty: Store[Stored] = Store(values.empty, stack.empty)
   def apply(va: ValueAddress): Stored = values(va)
-  def apply(ka: KontAddress): Kontinuation = stack(ka)
+  def apply(ka: KontAddress): Set[Kontinuation] = stack(ka)
   def +(a: ValueAddress, v: Stored): Store[Stored] = Store(values + Pair(a, v), stack)
-  def +(ka: KontAddress, k: Kontinuation): Store[Stored] = Store(values, stack + Pair(ka, k))
+  def +(ka: KontAddress, k: Kontinuation): Store[Stored] = if (stack isDefinedAt ka) {
+    Store(values, stack + Pair(ka, stack(ka) + k))
+  } else {
+    Store(values, stack + Pair(ka, Set(k)))
+  }
   def +(p: Pair[Address, Storable]): Store[Stored] = p match {
     case (va: ValueAddress, s: Stored) => Store(values + Pair(va, s), stack)
-    case (ka: KontAddress, k: Kontinuation) => Store(values, stack + Pair(ka, k))
+    case (ka: KontAddress, k: Kontinuation) => this.+(ka, k)
     case _ => throw StoreTypeException
   }
   def ++(pairs: Pair[Address, Storable]*): Store[Stored] = pairs match {
@@ -202,10 +206,9 @@ abstract sealed class Kontinuation extends Storable
 case class ConcreteKontinuation[Stored <: Value: ClassTag](val env: Env, val taintedAddrs: Set[Address],
   val contextTaint: Set[Pair[Function, Int]], val f: Function, val ln: Int,
   val nextAddr: KontAddress) extends Kontinuation {
-  def call(s: Store[Stored], result: Stored): State[Stored] =
-    State(ln, f, env, s + (ResultAddress, result), taintedAddrs, contextTaint, s(nextAddr))
-  def call(s: Store[Stored]): State[Stored] =
-    State(ln, f, env, s, taintedAddrs, contextTaint, s(nextAddr))
+  // TODO I think contextTaint should be passed in, too
+  def call(s: Store[Stored], ts: Set[Address]): Set[State[Stored]] =
+    for (kont <- s(nextAddr)) yield State(ln, f, env, s, ts, contextTaint, kont)
 }
 object halt extends Kontinuation
 

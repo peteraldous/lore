@@ -27,6 +27,8 @@ case object NestedFunctionException extends RuntimeException
 case object NoSuchLabelException extends RuntimeException
 case object NoSuchFunctionException extends RuntimeException
 case object ArityMismatchException extends RuntimeException
+case object BadKontinuationException extends RuntimeException
+
 
 case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
@@ -95,21 +97,37 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
           param <- f.params
           exp <- exps
         } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None) flatMap {(a: Option[Address]) => a}
-        val newTaintStore = noResultTaintStore ++ (taintedParams)
+        val newTaintStore = noResultTaintStore ++ taintedParams
         val kontAddr = Analyzer.allocator.kalloc(f, ln)
         val newNewStore = newStore + Pair(kontAddr, stack)
         val newStack = ConcreteKontinuation(env, noResultTaintStore, paredContextTaint, f, ln+1, kontAddr)
         Set(State(0, target, newEnv, newStore, newTaintStore, paredContextTaint, stack))
       // Return
-      case ReturnStatement(e) => throw NotImplementedException
-      // Throw
+      case ReturnStatement(e) => stack match {
+        case ck: ConcreteKontinuation[Stored] =>
+          val result = Evaluator.eval(e, env, store)
+          val resultStore = noResultStore + Pair(ResultAddress, result)
+          val resultTaintStore = if (Evaluator.tainted(e, env, taintStore)) {
+            noResultTaintStore + ResultAddress
+          } else {
+            noResultTaintStore
+          }
+          ck.call(resultStore, resultTaintStore)
+        case `halt` => Set.empty
+        case _ => throw BadKontinuationException
+      }
+      // TODO Throw
       case ThrowStatement(e) => throw NotImplementedException
       // Catch (handled statically)
       case CatchDirective(begin, end, handler) => pass
       // Function declaration (should never occur inside a function)
       case FunctionDeclaration(name, vars) => throw NestedFunctionException
       // Function end
-      case FunctionEnd => throw NotImplementedException
+      case FunctionEnd => stack match {
+        case ck: ConcreteKontinuation[Stored] => ck.call(noResultStore, noResultTaintStore)
+        case `halt` => Set.empty
+        case _ => throw BadKontinuationException
+      }
       case MoveResult(v) =>
         val newEnv = maybeAlloc(v)
         val newStore = noResultStore + Pair(newEnv(v), store(ResultAddress))
