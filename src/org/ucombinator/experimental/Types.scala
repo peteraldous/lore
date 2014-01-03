@@ -149,13 +149,6 @@ case class LessMoreInt(val less: Boolean, val negativeOne: Boolean, val zero: Bo
 
 trait Storable
 
-abstract sealed class Address
-abstract sealed class ValueAddress extends Address
-case class BindAddress(a: Int) extends ValueAddress
-case class MonoAddress(v: Variable) extends ValueAddress
-case class KontAddress(f: Function, i: Int) extends Address
-case object ResultAddress extends ValueAddress
-
 case object StoreTypeException extends RuntimeException
 case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored],
   stack: Map[KontAddress, Set[Kontinuation]]) {
