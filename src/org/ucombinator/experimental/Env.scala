@@ -19,16 +19,10 @@
 
 package org.ucombinator.experimental
 
-import scala.reflect.ClassTag
-
-import Env.Env
-
-abstract sealed class Kontinuation extends Storable
-case class ConcreteKontinuation[Stored <: Value: ClassTag](val env: Env, val taintedAddrs: Set[Address],
-  val contextTaint: Set[Pair[Function, Int]], val f: Function, val ln: Int,
-  val nextAddr: KontAddress) extends Kontinuation {
-  // TODO I think contextTaint should be passed in, too
-  def call(s: Store[Stored], ts: Set[Address]): Set[State[Stored]] =
-    for (kont <- s(nextAddr)) yield State(ln, f, env, s, ts, contextTaint, kont)
+object Env {
+  type Env = Map[Variable, Address]
+  def apply(): Env = Map.empty
+  def apply(v: Variable, a: Address): Env = Map(v -> a)
+  def apply(pairs: Pair[Variable, Address]*): Env = Map(pairs: _*)
+  def apply(l: List[Pair[Variable, Address]]): Env = Map(l: _*)
 }
-object halt extends Kontinuation

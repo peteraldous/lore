@@ -19,6 +19,8 @@
 
 package org.ucombinator.experimental
 
+import scala.Option.option2Iterable
+
 case class Function(val name: String, val params: List[Variable], val statements: List[Statement]) {
   case object StaticStatementException extends RuntimeException
 

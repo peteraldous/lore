@@ -20,7 +20,6 @@
 package org.ucombinator.experimental
 
 import scala.io.Source
-import TypeAliases._
 import scala.reflect.ClassTag
 
 object Analyzer extends App {

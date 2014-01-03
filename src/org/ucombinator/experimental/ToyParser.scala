@@ -19,8 +19,8 @@
 
 package org.ucombinator.experimental
 
-import scala.util.parsing.combinator._
 import scala.language.postfixOps
+import scala.util.parsing.combinator.RegexParsers
 
 case class ParseError(msg: String) extends RuntimeException
 

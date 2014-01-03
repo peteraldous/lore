@@ -19,8 +19,9 @@
 
 package org.ucombinator.experimental
 
-import TypeAliases._
 import scala.reflect.ClassTag
+
+import Env.Env
 
 case object KontinuationEvaluationException extends RuntimeException
 

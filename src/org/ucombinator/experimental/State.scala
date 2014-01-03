@@ -19,9 +19,11 @@
 
 package org.ucombinator.experimental
 
-import TypeAliases._
-import scala.reflect.ClassTag
+import scala.Option.option2Iterable
 import scala.language.postfixOps
+import scala.reflect.ClassTag
+
+import Env.Env
 
 case object NestedFunctionException extends RuntimeException
 case object NoSuchLabelException extends RuntimeException
@@ -29,6 +31,8 @@ case object NoSuchFunctionException extends RuntimeException
 case object ArityMismatchException extends RuntimeException
 case object BadKontinuationException extends RuntimeException
 case class TopLevelException(e: Expression) extends RuntimeException
+case object NotImplementedException extends RuntimeException
+case object ImpossibleException extends RuntimeException
 
 case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],

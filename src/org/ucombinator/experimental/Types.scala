@@ -19,26 +19,8 @@
 
 package org.ucombinator.experimental
 
-import scala.language.postfixOps
-import scala.collection.immutable.HashMap
-import TypeAliases._
-import scala.collection.GenTraversableOnce
-import scala.reflect.ClassTag
-
-case object NotImplementedException extends RuntimeException
-case object ImpossibleException extends RuntimeException
-
 trait Storable
 
-object TypeAliases {
-  type Env = Map[Variable, Address]
-  object Env {
-    def apply(): Env = Map.empty
-    def apply(v: Variable, a: Address): Env = Map(v -> a)
-    def apply(pairs: Pair[Variable, Address]*): Env = Map(pairs: _*)
-    def apply(l: List[Pair[Variable, Address]]): Env = Map(l: _*)
-  }
-}
 case class Label(l: String)
 
 // states are (ln, env, store)
