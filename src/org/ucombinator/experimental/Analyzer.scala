@@ -34,16 +34,17 @@ object Analyzer extends App {
     case state :: rest if seen contains state => explore(rest, seen)
     case state :: rest if !(seen contains state) => explore(rest ++ state.next, seen + state)
   }
-  
+
   def significant[Stored <: Value](state: State[Stored]): Boolean = {
     state.f.isEndOfFunction(state.ln)
   }
-  
+
   def print[Stored <: Value](state: State[Stored]): Unit = println(state)
 
   val functionTable = ToyParser.applyFuns(Source.fromInputStream(System.in).getLines.mkString)
   val allocator = MonovariantAllocator
-  
+  val kontAllocator = CallSiteAllocator
+
   val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
 
   allStates filter significant map print

@@ -105,7 +105,7 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
         val taintedParams = taintedOptionParams flatMap { (oa: Option[Address]) => oa }
         val newTaintStore = noResultTaintStore ++ taintedParams
         // Kontinuation addresses, in this formulation, are based on call site
-        val kontAddr = Analyzer.allocator.kalloc(f, ln)
+        val kontAddr = Analyzer.kontAllocator.kalloc(f, ln)
         val newNewStore = newStore + Pair(kontAddr, stack)
         val newStack = ConcreteKontinuation(env, noResultTaintStore, paredContextTaint, f, ln + 1, kontAddr)
         Set(State(0, target, newEnv, newStore, newTaintStore, paredContextTaint, stack))
