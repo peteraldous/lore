@@ -45,6 +45,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
     val noResultStore = store - ResultAddress
     val noResultTaintStore = taintStore - ResultAddress
     // TODO must-reach
+    // sub-TODO create a call graph - each function must be associated with all LOCs that may invoke it
     val paredContextTaint = contextTaint
     val pass = Set(State(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
     loc.statement match {
