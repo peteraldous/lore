@@ -28,12 +28,6 @@ import scala.reflect.ClassTag
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
 
-abstract class Expression
-case class Addition(lhs: Expression, rhs: Expression) extends Expression
-case class Multiplication(lhs: Expression, rhs: Expression) extends Expression
-case class Comparison(lhs: Expression, rhs: Expression) extends Expression
-case class Variable(v: String) extends Expression
-
 trait Storable
 
 object TypeAliases {
@@ -51,7 +45,6 @@ object TypeAliases {
   }
 }
 case class Label(l: String)
-case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
 
 // states are (ln, env, store)
 // configurations are (state, stack summary)
