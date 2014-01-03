@@ -19,33 +19,26 @@
 
 package org.ucombinator.experimental
 
-import scala.Option.option2Iterable
+case object NoSuchLabelException extends RuntimeException
+case object StatementNumberOutOfBoundsException extends RuntimeException
 
-case class Function(val name: String, val params: List[Variable], val statements: List[Statement]) {
-  case object StaticStatementException extends RuntimeException
-
-  val labelStatements = statements flatMap {
-    _ match {
-      case LabelStatement(label) => Some(Pair(label, statements.indexOf(label)))
-      case _ => None
-    }
-  }
-  val labelTable = Map(labelStatements: _*)
-  val handlers = statements flatMap {
-    _ match {
-      case CatchDirective(begin, end, handler) =>
-        Some(ExceptionHandler(labelTable(begin), labelTable(end), handler))
-      case _ => None
-    }
-  }
-
-  def lookup(l: Label): LineOfCode = {
-    val target = labelTable.get(l) match {
-      case Some(i) => i
-      case None => throw NoSuchLabelException
-    }
-    LineOfCode(target, this)
+case class LineOfCode(val ln: Int, f: Function) {
+  def next: LineOfCode = LineOfCode(ln + 1, f)
+  def jump(l: Label): LineOfCode = f.lookup(l)
+  def statement: Statement = f.statements(ln)
+  
+  def isEndOfFunction: Boolean = if (f.statements isDefinedAt ln) {
+    f.statements(ln).isEndOfFunction
+  } else {
+    // Errors if s refers to a statement not in the function.
+    // This is reasonable because each function is capped with the FunctionEnd object.
+    throw StatementNumberOutOfBoundsException
   }
   
-  def init: LineOfCode = LineOfCode(0, this)
+  def findExceptionHandlerTarget: Option[LineOfCode] = {
+    f.handlers filter { _ contains ln } match {
+      case Nil => None
+      case head :: rest => Some(f.lookup(head.code))
+    }
+  }
 }

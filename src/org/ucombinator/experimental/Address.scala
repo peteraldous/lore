@@ -23,5 +23,5 @@ abstract sealed class Address
 abstract sealed class ValueAddress extends Address
 case class BindAddress(a: Int) extends ValueAddress
 case class MonoAddress(v: Variable) extends ValueAddress
-case class KontAddress(f: Function, i: Int) extends Address
+case class KontAddress(loc: LineOfCode) extends Address
 case object ResultAddress extends ValueAddress

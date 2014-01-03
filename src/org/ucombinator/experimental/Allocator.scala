@@ -30,9 +30,9 @@ case object MonovariantAllocator extends Allocator {
 }
 
 abstract sealed class KontAllocator {
-  def kalloc(f: Function, i: Int): KontAddress
+  def kalloc(loc: LineOfCode): KontAddress
 }
 
 case object CallSiteAllocator extends KontAllocator {
-  override def kalloc(f: Function, i: Int): KontAddress = KontAddress(f, i)
+  override def kalloc(loc: LineOfCode): KontAddress = KontAddress(loc)
 }
