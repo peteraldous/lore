@@ -147,7 +147,7 @@ case class LessMoreInt(val less: Boolean, val negativeOne: Boolean, val zero: Bo
   override def mayBeNonzero: Boolean = less || negativeOne || one || more
 }
 
-sealed trait Storable
+trait Storable
 
 abstract sealed class Address
 abstract sealed class ValueAddress extends Address
@@ -201,16 +201,6 @@ object TypeAliases {
 }
 case class Label(l: String)
 case class StackFrame(target: Int, previousEnv: Map[Variable, Address])
-
-abstract sealed class Kontinuation extends Storable
-case class ConcreteKontinuation[Stored <: Value: ClassTag](val env: Env, val taintedAddrs: Set[Address],
-  val contextTaint: Set[Pair[Function, Int]], val f: Function, val ln: Int,
-  val nextAddr: KontAddress) extends Kontinuation {
-  // TODO I think contextTaint should be passed in, too
-  def call(s: Store[Stored], ts: Set[Address]): Set[State[Stored]] =
-    for (kont <- s(nextAddr)) yield State(ln, f, env, s, ts, contextTaint, kont)
-}
-object halt extends Kontinuation
 
 // states are (ln, env, store)
 // configurations are (state, stack summary)
