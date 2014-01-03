@@ -38,11 +38,6 @@ object TypeAliases {
     def apply(pairs: Pair[Variable, Address]*): Env = Map(pairs: _*)
     def apply(l: List[Pair[Variable, Address]]): Env = Map(l: _*)
   }
-  case class ConcreteResult(val value: Value, val tainted: Boolean)
-  type Result = Option[ConcreteResult]
-  object Result {
-    def apply(v: Value, t: Boolean): Result = Some(ConcreteResult(v, t))
-  }
 }
 case class Label(l: String)
 
