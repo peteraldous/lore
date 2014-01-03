@@ -252,7 +252,3 @@ case class MoveResult(val v: Variable) extends Statement {
   override def isEndOfFunction: Boolean = false
   override def toString: String = super.toString + "\"(result " + v + ")\""
 }
-
-case class ExceptionHandler(val begin: Int, val end: Int, val code: Label) {
-  def contains(line: Int): Boolean = begin < line && end >= line
-}
