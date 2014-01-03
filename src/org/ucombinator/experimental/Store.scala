@@ -21,6 +21,8 @@ package org.ucombinator.experimental
 
 import scala.reflect.ClassTag
 
+trait Storable
+
 case object StoreTypeException extends RuntimeException
 case class Store[Stored <: Value: ClassTag](values: Map[ValueAddress, Stored],
   stack: Map[KontAddress, Set[Kontinuation]]) {

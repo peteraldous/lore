@@ -19,6 +19,8 @@
 
 package org.ucombinator.experimental
 
+case class Label(l: String)
+
 abstract sealed class Statement {
   def isEndOfFunction: Boolean
 }

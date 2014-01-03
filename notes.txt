@@ -17,11 +17,5 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-package org.ucombinator.experimental
-
-trait Storable
-
-case class Label(l: String)
-
 // states are (ln, env, store)
 // configurations are (state, stack summary)
