@@ -92,22 +92,28 @@ case class State[Stored <: Value: ClassTag](val ln: Int, val f: Function, val en
           case None => throw NoSuchFunctionException
         }
         if (target.params.length != exps.length) throw ArityMismatchException
+        
         // Observe that, as the functions are static and flat, each new environment contains
         // exactly the bindings specified in the function's parameter list.
         val newEnv = Env(target.params map {
           (param: Variable) => Pair(param, Analyzer.allocator.alloc(param))
         })
+        
+        // update the store
         val newValues = for {
           param <- target.params
           exp <- exps
         } yield Pair(newEnv(param), Evaluator.eval(exp, env, store))
         val newStore = noResultStore ++ newValues
+        
+        // update the taint store
         val taintedOptionParams: List[Option[Address]] = (for {
           param <- target.params
           exp <- exps
         } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None)
         val taintedParams = taintedOptionParams flatMap { (oa: Option[Address]) => oa }
         val newTaintStore = noResultTaintStore ++ taintedParams
+        
         // Kontinuation addresses, in this formulation, are based on call site
         val kontAddr = Analyzer.kontAllocator.kalloc(f, ln)
         val newNewStore = newStore + Pair(kontAddr, stack)
