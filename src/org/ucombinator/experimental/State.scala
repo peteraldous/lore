@@ -128,6 +128,8 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
       }
 
       // Throw
+      // TODO we need to pop konts off of the stack
+      // - - and, in doing so, handle the case that there are many konts at nextAddr
       case ThrowStatement(e) =>
         def throwException(loc: LineOfCode): Set[State[Stored]] = {
           loc.findExceptionHandlerTarget match {
