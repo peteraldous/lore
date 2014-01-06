@@ -98,13 +98,9 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
         val newStore = noResultStore ++ newValues
 
         // update the taint store
-        val taintedParams = target.params zip exps flatMap {
-          case (param, exp) =>
-            if (Evaluator.tainted(exp, env, taintStore))
-              Some(newEnv(param))
-            else
-              None
-        }
+        val taintedParams = for {
+          (param, exp) <- target.params zip exps if (Evaluator.tainted(exp, env, taintStore))
+        } yield newEnv(param)
         val newTaintStore = noResultTaintStore ++ taintedParams
 
         // Kontinuation addresses, in this formulation, are based on call site
