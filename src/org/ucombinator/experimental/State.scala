@@ -93,15 +93,13 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
 
         // update the store
         val newValues = for {
-          param <- target.params
-          exp <- exps
+          (param, exp) <- target.params zip exps
         } yield Pair(newEnv(param), Evaluator.eval(exp, env, store))
         val newStore = noResultStore ++ newValues
 
         // update the taint store
         val taintedOptionParams: List[Option[Address]] = (for {
-          param <- target.params
-          exp <- exps
+          (param, exp) <- target.params zip exps
         } yield if (Evaluator.tainted(exp, env, taintStore)) Some(newEnv(param)) else None)
         val taintedParams = taintedOptionParams flatMap { (oa: Option[Address]) => oa }
         val newTaintStore = noResultTaintStore ++ taintedParams
