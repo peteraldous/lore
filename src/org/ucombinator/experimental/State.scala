@@ -125,22 +125,23 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
       }
 
       // Throw
-      // TODO we need to pop konts off of the stack
-      // - - and, in doing so, handle the case that there are many konts at nextAddr
       case ThrowStatement(e) =>
-        def throwException(loc: LineOfCode): Set[State[Stored]] = {
-          loc.findExceptionHandlerTarget match {
+        def throwException(loc: LineOfCode, konts: Set[Kontinuation]): Set[State[Stored]] = {
+          val sets = for {
+            kont <- konts
+          } yield loc.findExceptionHandlerTarget match {
             case Some(l) =>
-              Set(State(l, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
-            case None => stack match {
+              Set(State(l, env, noResultStore, noResultTaintStore, paredContextTaint, kont))
+            case None => kont match {
               case `halt` => throw TopLevelException(e)
               case ConcreteKontinuation(env, ts, contextTaint, kloc, nextAddr) =>
-                throwException(kloc)
+                throwException(kloc, store(nextAddr))
               case _ => throw BadKontinuationException
             }
           }
+          sets flatMap { (s: Set[State[Stored]]) => s }
         }
-        throwException(loc)
+        throwException(loc, Set(stack))
 
       // Catch (handled statically)
       case CatchDirective(begin, end, handler) => pass
