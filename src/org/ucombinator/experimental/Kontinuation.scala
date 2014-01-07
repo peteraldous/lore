@@ -25,7 +25,7 @@ import Env.Env
 
 abstract sealed class Kontinuation extends Storable
 case class ConcreteKontinuation[Stored <: Value: ClassTag](val env: Env, val taintedAddrs: Set[Address],
-  val contextTaint: Set[Pair[Function, Int]], val loc: LineOfCode,
+  val contextTaint: Set[LineOfCode], val loc: LineOfCode,
   val nextAddr: KontAddress) extends Kontinuation {
   // TODO I think contextTaint should be passed in, too
   def call(s: Store[Stored], ts: Set[Address]): Set[State[Stored]] =

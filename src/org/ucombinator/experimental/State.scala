@@ -34,7 +34,7 @@ case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
 
 case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
-  val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[Pair[Function, Int]],
+  val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[LineOfCode],
   val stack: Kontinuation) {
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
@@ -139,6 +139,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
               case _ => throw BadKontinuationException
             }
           }
+          // condense a set of sets into a single set
           sets flatMap { (s: Set[State[Stored]]) => s }
         }
         throwException(loc, Set(stack))
