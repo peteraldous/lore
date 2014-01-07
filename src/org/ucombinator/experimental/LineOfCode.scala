@@ -26,7 +26,7 @@ case class LineOfCode(val ln: Int, f: Function) {
   def next: LineOfCode = LineOfCode(ln + 1, f)
   def jump(l: Label): LineOfCode = f.lookup(l)
   def statement: Statement = f.statements(ln)
-  
+
   def isEndOfFunction: Boolean = if (f.statements isDefinedAt ln) {
     f.statements(ln).isEndOfFunction
   } else {
@@ -34,11 +34,32 @@ case class LineOfCode(val ln: Int, f: Function) {
     // This is reasonable because each function is capped with the FunctionEnd object.
     throw StatementNumberOutOfBoundsException
   }
-  
+
   def findExceptionHandlerTarget: Option[LineOfCode] = {
     f.handlers filter { _ contains ln } match {
       case Nil => None
       case head :: rest => Some(f.lookup(head.code))
     }
+  }
+
+  def mustReach: Set[LineOfCode] = {
+    val next = LineOfCode(ln + 1, f)
+    if (f.statements isDefinedAt ln) {
+      f.statements(ln) match {
+        case l: LabelStatement => next.mustReach + next
+        case a: AssignmentStatement => next.mustReach + next
+        case GotoStatement(l) =>
+          val target = f.lookup(l)
+          target.mustReach + target
+        case i: IfStatement => throw NotImplementedException
+        case f: FunctionCall => throw NotImplementedException
+        case r: ReturnStatement => Set(LineOfCode(f.statements.length, f))
+        case t: ThrowStatement => throw NotImplementedException
+        case c: CatchDirective => next.mustReach + next
+        case f: FunctionDeclaration => throw NestedFunctionException
+        case `FunctionEnd` => Set(next)
+        case m: MoveResult => next.mustReach + next
+      }
+    } else Set.empty
   }
 }
