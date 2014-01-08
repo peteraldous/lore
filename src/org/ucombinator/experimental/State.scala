@@ -43,7 +43,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
   val pass = State(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   val passSet = Set(pass)
   def jump(l: Label): State[Stored] = State(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack)
-  def addToContextTaint: State[Stored] = State(loc, env, store, taintStore, contextTaint + loc, stack)
+  def addToContextTaint(ploc: LineOfCode): State[Stored] = State(loc, env, store, taintStore, contextTaint + ploc, stack)
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
       if (env isDefinedAt v)
@@ -171,7 +171,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
       }
     }
     val returnSet = nextNoContext
-    if (returnSet.size > 1) returnSet map { _.addToContextTaint } else returnSet
+    if (returnSet.size > 1) returnSet map { _.addToContextTaint(loc) } else returnSet
   }
 
   def mustReach: Set[LineOfCode] = {
