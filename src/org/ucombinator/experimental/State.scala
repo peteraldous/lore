@@ -43,6 +43,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
   val paredContextTaint = contextTaint
   val pass = State(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   val passSet = Set(pass)
+  def jump(l: Label): State[Stored] = State(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
       if (env isDefinedAt v)
@@ -66,15 +67,13 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
         Set(State(loc.next, newEnv, newStore, newTaintStore, paredContextTaint, stack))
 
       // Goto
-      case GotoStatement(l) =>
-        Set(State(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack))
+      case GotoStatement(l) => Set(jump(l))
 
       // If
       case IfStatement(condition, l) =>
         val cond = Evaluator.eval(condition, env, store)
-        val jump = Set(State(loc.jump(l), env, noResultStore,
-          noResultTaintStore, paredContextTaint, stack))
-        val maybeJump: Set[State[Stored]] = if (cond.mayBeNonzero) jump else Set.empty
+        val jumpSet = Set(jump(l))
+        val maybeJump: Set[State[Stored]] = if (cond.mayBeNonzero) jumpSet else Set.empty
         val maybePass: Set[State[Stored]] = if (cond.mayBeZero) passSet else Set.empty
         maybeJump | maybePass
 
@@ -176,11 +175,11 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
       case l: LabelStatement => pass.mustReach + pass.loc
       case a: AssignmentStatement => pass.mustReach + pass.loc
       case GotoStatement(l) =>
-        val target = loc.f.lookup(l)
-        target.mustReach + target
+        val target = jump(l)
+        target.mustReach + target.loc
       case IfStatement(c, l) =>
-        val target = loc.f.lookup(l)
-        target.mustReach & next.mustReach
+        val target = jump(l)
+        target.mustReach & pass.mustReach
       case f: FunctionCall => throw NotImplementedException
       case r: ReturnStatement => throw NotImplementedException
       case t: ThrowStatement => throw NotImplementedException
