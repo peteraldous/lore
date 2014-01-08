@@ -36,21 +36,22 @@ case object ImpossibleException extends RuntimeException
 case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[LineOfCode],
   val stack: Kontinuation) {
+  val noResultStore = store - ResultAddress
+  val noResultTaintStore = taintStore - ResultAddress
+  // TODO must-reach
+  // sub-TODO create a call graph - each function must be associated with all LOCs that may invoke it
+  val paredContextTaint = contextTaint
+  val pass = State(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
+  val passSet = Set(pass)
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
       if (env isDefinedAt v)
         env
       else
         env + Pair(v, Analyzer.allocator.alloc(v))
-    val noResultStore = store - ResultAddress
-    val noResultTaintStore = taintStore - ResultAddress
-    // TODO must-reach
-    // sub-TODO create a call graph - each function must be associated with all LOCs that may invoke it
-    val paredContextTaint = contextTaint
-    val pass = Set(State(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack))
     loc.statement match {
       // Label
-      case LabelStatement(l) => pass
+      case LabelStatement(l) => passSet
 
       // Assignment
       case AssignmentStatement(v, e) =>
@@ -74,7 +75,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
         val jump = Set(State(loc.jump(l), env, noResultStore,
           noResultTaintStore, paredContextTaint, stack))
         val maybeJump: Set[State[Stored]] = if (cond.mayBeNonzero) jump else Set.empty
-        val maybePass: Set[State[Stored]] = if (cond.mayBeZero) pass else Set.empty
+        val maybePass: Set[State[Stored]] = if (cond.mayBeZero) passSet else Set.empty
         maybeJump | maybePass
 
       // Function call
@@ -145,7 +146,7 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
         throwException(loc, Set(stack))
 
       // Catch (handled statically)
-      case CatchDirective(begin, end, handler) => pass
+      case CatchDirective(begin, end, handler) => passSet
 
       // Function declaration (should never occur inside a function)
       case FunctionDeclaration(name, vars) => throw NestedFunctionException
@@ -167,6 +168,26 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
           else
             noResultTaintStore
         Set(State(loc.next, newEnv, newStore, newTaintStore, paredContextTaint, stack))
+    }
+  }
+
+  def mustReach: Set[LineOfCode] = {
+    loc.f.statements(loc.ln) match {
+      case l: LabelStatement => pass.mustReach + pass.loc
+      case a: AssignmentStatement => pass.mustReach + pass.loc
+      case GotoStatement(l) =>
+        val target = loc.f.lookup(l)
+        target.mustReach + target
+      case IfStatement(c, l) =>
+        val target = loc.f.lookup(l)
+        target.mustReach & next.mustReach
+      case f: FunctionCall => throw NotImplementedException
+      case r: ReturnStatement => throw NotImplementedException
+      case t: ThrowStatement => throw NotImplementedException
+      case c: CatchDirective => pass.mustReach + pass.loc
+      case f: FunctionDeclaration => throw NestedFunctionException
+      case `FunctionEnd` => throw NotImplementedException
+      case m: MoveResult => pass.mustReach + pass.loc
     }
   }
 }

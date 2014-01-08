@@ -41,25 +41,4 @@ case class LineOfCode(val ln: Int, f: Function) {
       case head :: rest => Some(f.lookup(head.code))
     }
   }
-
-  def mustReach: Set[LineOfCode] = {
-    val next = LineOfCode(ln + 1, f)
-    if (f.statements isDefinedAt ln) {
-      f.statements(ln) match {
-        case l: LabelStatement => next.mustReach + next
-        case a: AssignmentStatement => next.mustReach + next
-        case GotoStatement(l) =>
-          val target = f.lookup(l)
-          target.mustReach + target
-        case i: IfStatement => throw NotImplementedException
-        case f: FunctionCall => throw NotImplementedException
-        case r: ReturnStatement => Set(LineOfCode(f.statements.length, f))
-        case t: ThrowStatement => throw NotImplementedException
-        case c: CatchDirective => next.mustReach + next
-        case f: FunctionDeclaration => throw NestedFunctionException
-        case `FunctionEnd` => Set(next)
-        case m: MoveResult => next.mustReach + next
-      }
-    } else Set.empty
-  }
 }
