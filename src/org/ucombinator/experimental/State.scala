@@ -171,7 +171,8 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
       }
     }
     val returnSet = nextNoContext
-    if (returnSet.size > 1) returnSet map { _.addToContextTaint(loc) } else returnSet
+    val locSet = returnSet map { _.loc }
+    if (locSet.size > 1) returnSet map { _.addToContextTaint(loc) } else returnSet
   }
 
   def mustReach: Set[LineOfCode] = {
