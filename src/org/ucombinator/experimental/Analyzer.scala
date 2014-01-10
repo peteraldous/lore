@@ -38,9 +38,36 @@ object Analyzer extends App {
     state.loc.isEndOfFunction
   }
 
+  case class CallerMap(m: Map[Function, Set[LineOfCode]]) {
+    def +(p: Pair[Function, LineOfCode]): CallerMap = this + (p._1, p._2)
+    def +(f: Function, loc: LineOfCode): CallerMap = {
+      if (m isDefinedAt f)
+        CallerMap(m + Pair(f, m(f) + loc))
+      else
+        CallerMap(m + Pair(f, Set(loc)))
+    }
+    def ++(f: Function): CallerMap = this ++ f.init
+    def ++(loc: LineOfCode): CallerMap = loc.statement match {
+      case `FunctionEnd` => this
+      case FunctionCall(fn, exps) => (this.+(functionTable(fn), loc)) ++ loc.next
+      case _ => this ++ loc.next
+    }
+    def ++(fs: Iterable[Function]): CallerMap = fs match {
+      case Nil => this
+      case head :: rest => (this ++ head) ++ rest
+    }
+    def apply(f: Function): Set[LineOfCode] = m(f)
+  }
+  case object CallerMap {
+    def empty: CallerMap = new CallerMap(Map.empty)
+    def apply(f: Function): CallerMap = empty ++ f
+    def apply(fs: Iterable[Function]): CallerMap = empty ++ fs
+  }
+
   def print[Stored <: Value](state: State[Stored]): Unit = println(state)
 
   val functionTable = ToyParser.applyFuns(Source.fromInputStream(System.in).getLines.mkString)
+  val callSites = CallerMap(functionTable.values)
   val allocator = MonovariantAllocator
   val kontAllocator = CallSiteAllocator
 
