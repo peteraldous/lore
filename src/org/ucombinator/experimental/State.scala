@@ -29,6 +29,7 @@ case object NestedFunctionException extends RuntimeException
 case object NoSuchFunctionException extends RuntimeException
 case object ArityMismatchException extends RuntimeException
 case object BadKontinuationException extends RuntimeException
+// TODO consider an error state instead of throwing an exception
 case class TopLevelException(e: Expression) extends RuntimeException
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
@@ -38,11 +39,11 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
   val stack: Kontinuation) {
   val noResultStore = store - ResultAddress
   val noResultTaintStore = taintStore - ResultAddress
-  // TODO must-reach
-  val paredContextTaint = contextTaint
+  val paredContextTaint = contextTaint filter {(tloc: LineOfCode) => !(tloc.mustReach contains loc)}
   val pass = State(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   val passSet = Set(pass)
   def jump(l: Label): State[Stored] = State(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack)
+  // TODO this is wrong
   def addToContextTaint(ploc: LineOfCode): State[Stored] = State(loc, env, store, taintStore, contextTaint + ploc, stack)
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
@@ -173,25 +174,5 @@ case class State[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
     val returnSet = nextNoContext
     val locSet = returnSet map { _.loc }
     if (locSet.size > 1) returnSet map { _.addToContextTaint(loc) } else returnSet
-  }
-
-  def mustReach: Set[LineOfCode] = {
-    loc.f.statements(loc.ln) match {
-      case l: LabelStatement => pass.mustReach + pass.loc
-      case a: AssignmentStatement => pass.mustReach + pass.loc
-      case GotoStatement(l) =>
-        val target = jump(l)
-        target.mustReach + target.loc
-      case IfStatement(c, l) =>
-        val target = jump(l)
-        target.mustReach & pass.mustReach
-      case f: FunctionCall => throw NotImplementedException
-      case r: ReturnStatement => throw NotImplementedException
-      case t: ThrowStatement => throw NotImplementedException
-      case c: CatchDirective => pass.mustReach + pass.loc
-      case f: FunctionDeclaration => throw NestedFunctionException
-      case `FunctionEnd` => throw NotImplementedException
-      case m: MoveResult => pass.mustReach + pass.loc
-    }
   }
 }

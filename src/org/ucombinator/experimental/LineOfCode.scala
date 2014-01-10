@@ -22,7 +22,7 @@ package org.ucombinator.experimental
 case object NoSuchLabelException extends RuntimeException
 case object StatementNumberOutOfBoundsException extends RuntimeException
 
-case class LineOfCode(val ln: Int, f: Function) {
+case class LineOfCode(val ln: Int, val f: Function) {
   def next: LineOfCode = LineOfCode(ln + 1, f)
   def jump(l: Label): LineOfCode = f.lookup(l)
   def statement: Statement = f.statements(ln)
@@ -39,6 +39,32 @@ case class LineOfCode(val ln: Int, f: Function) {
     f.handlers filter { _ contains ln } match {
       case Nil => None
       case head :: rest => Some(f.lookup(head.code))
+    }
+  }
+
+  def mustReach: Set[LineOfCode] = {
+    statement match {
+      case l: LabelStatement => next.mustReach + next
+      case a: AssignmentStatement => next.mustReach + next
+      case GotoStatement(l) =>
+        val target = jump(l)
+        target.mustReach + target
+      case IfStatement(c, l) =>
+        val target = jump(l)
+        target.mustReach & next.mustReach
+      case FunctionCall(f, exps) =>
+        val target = Analyzer.functionTable(f).init
+        target.mustReach + target
+      // TODO is it sound to use the kontinuation?
+      case r: ReturnStatement => throw NotImplementedException
+      // TODO make a static collection of all exception handler targets whose
+      // handlers could possibly handle an exception from this LoC
+      case t: ThrowStatement => throw NotImplementedException
+      case c: CatchDirective => next.mustReach + next
+      case f: FunctionDeclaration => throw NestedFunctionException
+      // TODO same as ReturnStatement(void)
+      case `FunctionEnd` => throw NotImplementedException
+      case m: MoveResult => next.mustReach + next
     }
   }
 }
