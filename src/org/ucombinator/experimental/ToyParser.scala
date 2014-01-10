@@ -63,8 +63,8 @@ object ToyParser extends RegexParsers {
   def comparison: Parser[Comparison] = "(=" ~> expr ~ expr <~ ")" ^^ { (result) => Comparison(result._1, result._2) }
 
   def stmt: Parser[Statement] = (labelStatement | gotoStatement | assignStatement | condStatement
-      | functionCall | returnStatement | catchDirective | moveResult | throwStatement)
-      
+    | functionCall | returnStatement | catchDirective | moveResult | throwStatement)
+
   def fun: Parser[Function] = functionDeclaration ~ rep(stmt) ~ functionEnd map {
     case decl ~ stmts ~ end => decl match {
       case FunctionDeclaration(name, vars) => Function(name, vars, stmts)
@@ -72,10 +72,16 @@ object ToyParser extends RegexParsers {
     }
     case _ => throw new ParseError("Bad function")
   }
-  
+
+  case class DuplicateFunctionNameException(fn: String) extends RuntimeException
   def applyFuns(input: String): Map[String, Function] = {
     def processParseResult(result: ParseResult[Function]): Map[String, Function] = result match {
-      case Success(result, remainder) => innerApplyFuns(remainder) + Pair(result.name, result)
+      case Success(result, remainder) =>
+        val soFar = innerApplyFuns(remainder)
+        if (soFar isDefinedAt result.name)
+          throw DuplicateFunctionNameException(result.name)
+        else
+          soFar + Pair(result.name, result)
       case failure: NoSuccess => scala.sys.error(failure.msg)
     }
     def innerApplyFuns(input: Input): Map[String, Function] = {
