@@ -42,6 +42,20 @@ case class LineOfCode(val ln: Int, val f: Function) {
     }
   }
 
+  // TODO this probably can loop infinitely
+  // TODO check this function for correctness
+  // TODO handle the possibility of a top-level exception if f is "main"
+  def possibleCatchers: Set[LineOfCode] = {
+    findExceptionHandlerTarget match {
+      case Some(t) => Set(t)
+      case None =>
+        val sets = for {
+        callSite <- Analyzer.callSites(f)
+      } yield callSite.possibleCatchers
+      sets flatMap {s => s}
+    }
+  }
+
   def mustReach: Set[LineOfCode] = {
     statement match {
       case l: LabelStatement => next.mustReach + next

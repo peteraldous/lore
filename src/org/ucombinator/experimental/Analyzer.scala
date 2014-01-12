@@ -39,7 +39,7 @@ object Analyzer extends App {
   }
 
   case class CallerMap(m: Map[Function, Set[LineOfCode]]) {
-    def +(p: Pair[Function, LineOfCode]): CallerMap = this + (p._1, p._2)
+    def +(p: Pair[Function, LineOfCode]): CallerMap = this.+(p._1, p._2)
     def +(f: Function, loc: LineOfCode): CallerMap = {
       if (m isDefinedAt f)
         CallerMap(m + Pair(f, m(f) + loc))
@@ -62,6 +62,19 @@ object Analyzer extends App {
     def empty: CallerMap = new CallerMap(Map.empty)
     def apply(f: Function): CallerMap = empty ++ f
     def apply(fs: Iterable[Function]): CallerMap = empty ++ fs
+  }
+
+  case class CatcherMap(m: Map[LineOfCode, Set[LineOfCode]]) {
+    def addPair(p: Pair[LineOfCode, LineOfCode]): CatcherMap = this.addPair(p._1, p._2)
+    def addPair(tloc: LineOfCode, cloc: LineOfCode): CatcherMap = {
+      if (m isDefinedAt tloc)
+        CatcherMap(m + Pair(tloc, m(tloc) + cloc))
+      else
+        CatcherMap(m + Pair(tloc, Set(cloc)))
+    }
+    def +(tloc: LineOfCode): CatcherMap = {
+      throw NotImplementedException
+    }
   }
 
   def print[Stored <: Value](state: State[Stored]): Unit = println(state)
