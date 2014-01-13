@@ -42,18 +42,27 @@ case class LineOfCode(val ln: Int, val f: Function) {
     }
   }
 
-  // TODO this probably can loop infinitely
   // TODO check this function for correctness
   // TODO handle the possibility of a top-level exception if f is "main"
   def possibleCatchers: Set[LineOfCode] = {
-    findExceptionHandlerTarget match {
-      case Some(t) => Set(t)
-      case None =>
-        val sets = for {
-        callSite <- Analyzer.callSites(f)
-      } yield callSite.possibleCatchers
-      sets flatMap {s => s}
+    def innerPossibleCatchers(site: LineOfCode, catchers: Set[LineOfCode] = Set.empty, seen: Set[LineOfCode] = Set.empty): Pair[Set[LineOfCode], Set[LineOfCode]] = {
+      findExceptionHandlerTarget match {
+        case Some(t) => Pair(catchers + t, seen + t)
+        case None =>
+          def checkCallSites(sites: Iterable[LineOfCode], catchers: Set[LineOfCode], seen: Set[LineOfCode]): Pair[Set[LineOfCode], Set[LineOfCode]] = {
+            sites match {
+              case Nil => Pair(catchers, seen)
+              case site :: rest =>
+                val (newCatchers, newSeen) = innerPossibleCatchers(site, catchers, seen + site)
+                checkCallSites(rest, newCatchers, newSeen)
+            }
+          }
+          val sites = Analyzer.callSites(f) filter { site => !(seen contains site) }
+          checkCallSites(sites, catchers, seen)
+      }
     }
+    val (catchers, seen) = innerPossibleCatchers(this, Set.empty, Set(this))
+    catchers
   }
 
   def mustReach: Set[LineOfCode] = {
