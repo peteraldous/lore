@@ -65,6 +65,13 @@ case class LineOfCode(val ln: Int, val f: Function) {
     catchers
   }
 
+  def intersect(sets: Set[Set[LineOfCode]]): Set[LineOfCode] = {
+    if (sets.size == 1)
+      sets.head
+    else
+      sets.head & intersect(sets.tail)
+  }
+
   def mustReach: Set[LineOfCode] = {
     statement match {
       case l: LabelStatement => next.mustReach + next
@@ -79,14 +86,14 @@ case class LineOfCode(val ln: Int, val f: Function) {
         val target = Analyzer.functionTable(f).init
         target.mustReach + target
       // TODO is it sound to use the kontinuation?
-      case r: ReturnStatement => throw NotImplementedException
+      case r: ReturnStatement => intersect(Analyzer.callSites(f) map {_.mustReach})
       // TODO make a static collection of all exception handler targets whose
       // handlers could possibly handle an exception from this LoC
-      case t: ThrowStatement => throw NotImplementedException
+      case t: ThrowStatement => intersect(possibleCatchers map {_.mustReach})
       case c: CatchDirective => next.mustReach + next
       case f: FunctionDeclaration => throw NestedFunctionException
       // TODO same as ReturnStatement(void)
-      case `FunctionEnd` => throw NotImplementedException
+      case `FunctionEnd` => intersect(Analyzer.callSites(f) map {_.mustReach})
       case m: MoveResult => next.mustReach + next
     }
   }
