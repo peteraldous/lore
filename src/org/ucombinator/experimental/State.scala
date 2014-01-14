@@ -134,7 +134,7 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
           } else {
             noResultTaintStore
           }
-          ck.call(resultStore, resultTaintStore)
+          ck.call(resultStore, resultTaintStore, paredContextTaint)
         case `halt` => Set.empty
         case _ => throw BadKontinuationException
       }
@@ -164,7 +164,7 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
 
       // Function end
       case FunctionEnd => stack match {
-        case ck: ConcreteKontinuation[Stored] => ck.call(noResultStore, noResultTaintStore)
+        case ck: ConcreteKontinuation[Stored] => ck.call(noResultStore, noResultTaintStore, paredContextTaint)
         case `halt` => Set.empty
         case _ => throw BadKontinuationException
       }

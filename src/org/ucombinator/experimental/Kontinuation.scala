@@ -27,8 +27,7 @@ abstract sealed class Kontinuation extends Storable
 case class ConcreteKontinuation[Stored <: Value: ClassTag](val env: Env, val taintedAddrs: Set[Address],
   val contextTaint: Set[LineOfCode], val loc: LineOfCode,
   val nextAddr: KontAddress) extends Kontinuation {
-  // TODO I think contextTaint should be passed in, too
-  def call(s: Store[Stored], ts: Set[Address]): Set[State[Stored]] =
-    for (kont <- s(nextAddr)) yield RegularState(loc, env, s, ts, contextTaint, kont)
+  def call(s: Store[Stored], ts: Set[Address], ct: Set[LineOfCode]): Set[State[Stored]] =
+    for (kont <- s(nextAddr)) yield RegularState(loc, env, s, ts, ct, kont)
 }
 object halt extends Kontinuation
