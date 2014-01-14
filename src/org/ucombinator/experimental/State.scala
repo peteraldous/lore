@@ -36,7 +36,12 @@ case class TopLevelException(e: Expression) extends RuntimeException
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
 
-abstract sealed class State[Stored <: Value: ClassTag]
+abstract sealed class State[Stored <: Value: ClassTag] {
+  def next: Set[State[Stored]]
+}
+case class ErrorState[Stored <: Value: ClassTag](e: Expression) extends State[Stored] {
+  def next: Set[State[Stored]] = Set.empty
+}
 case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[LineOfCode],
   val stack: Kontinuation) extends State[Stored] {
@@ -44,7 +49,7 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
   val noResultTaintStore = taintStore - ResultAddress
   val paredContextTaint = contextTaint filter { (tloc: LineOfCode) => !(tloc.mustReach contains loc) }
   val pass = RegularState(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
-  val passSet = Set(pass)
+  val passSet: Set[State[Stored]] = Set(pass)
   def jump(l: Label): State[Stored] = RegularState(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
@@ -129,20 +134,17 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
       // Throw
       case ThrowStatement(e) =>
         def throwException(loc: LineOfCode, konts: Set[Kontinuation]): Set[State[Stored]] = {
-          val sets = for {
-            kont <- konts
-          } yield loc.findExceptionHandlerTarget match {
+          def thefun(states: Set[State[Stored]], kont: Kontinuation): Set[State[Stored]] = loc.findExceptionHandlerTarget match {
             case Some(l) =>
               Set(RegularState(l, env, noResultStore, noResultTaintStore, paredContextTaint, kont))
             case None => kont match {
-              case `halt` => throw TopLevelException(e)
+              case `halt` => Set(ErrorState(e))
               case ConcreteKontinuation(env, ts, contextTaint, kloc, nextAddr) =>
                 throwException(kloc, store(nextAddr))
               case _ => throw BadKontinuationException
             }
           }
-          // condense a set of sets into a single set
-          sets flatMap { (s: Set[State[Stored]]) => s }
+          konts.foldLeft(Set.empty: Set[State[Stored]])(thefun)
         }
         throwException(loc, Set(stack))
 

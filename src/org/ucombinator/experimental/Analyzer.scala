@@ -24,7 +24,7 @@ import scala.reflect.ClassTag
 
 object Analyzer extends App {
   def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function]): State[Stored] = {
-    State[Stored](functionTable("main").init, Env(), Store(Map.empty, Map.empty), Set.empty, Set.empty, halt)
+    RegularState[Stored](functionTable("main").init, Env(), Store(Map.empty, Map.empty), Set.empty, Set.empty, halt)
   }
 
   // TODO abstract garbage collection - remember to look at all of the environments in the stack
@@ -35,7 +35,10 @@ object Analyzer extends App {
   }
 
   def significant[Stored <: Value](state: State[Stored]): Boolean = {
-    state.loc.isEndOfFunction
+    state match {
+      case rs: RegularState[Stored] => rs.loc.isEndOfFunction
+      case _ => false
+    }
   }
 
   case class CallerMap(m: Map[Function, Set[LineOfCode]]) {
