@@ -25,22 +25,21 @@ import scala.reflect.ClassTag
 
 import Env.Env
 
-// TODO context taint
-
 case object NestedFunctionException extends RuntimeException
 case object NoSuchFunctionException extends RuntimeException
 case object ArityMismatchException extends RuntimeException
 case object BadKontinuationException extends RuntimeException
-// TODO consider an error state instead of throwing an exception
 case class TopLevelException(e: Expression) extends RuntimeException
 case object NotImplementedException extends RuntimeException
 case object ImpossibleException extends RuntimeException
 
 abstract sealed class State[Stored <: Value: ClassTag] {
   def next: Set[State[Stored]]
+  def addToContextTaint(loc: LineOfCode): State[Stored]
 }
 case class ErrorState[Stored <: Value: ClassTag](e: Expression) extends State[Stored] {
   def next: Set[State[Stored]] = Set.empty
+  def addToContextTaint(loc: LineOfCode): State[Stored] = this
 }
 case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env: Env,
   val store: Store[Stored], val taintStore: Set[Address], val contextTaint: Set[LineOfCode],
@@ -51,6 +50,9 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
   val pass = RegularState(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   val passSet: Set[State[Stored]] = Set(pass)
   def jump(l: Label): State[Stored] = RegularState(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack)
+  def addToContextTaint(tloc: LineOfCode): RegularState[Stored] = {
+    RegularState(loc, env, store, taintStore, contextTaint + tloc, stack)
+  }
   def next: Set[State[Stored]] = {
     def maybeAlloc(v: Variable): Env =
       if (env isDefinedAt v)
@@ -79,10 +81,16 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
       // If
       case IfStatement(condition, l) =>
         val cond = Evaluator.eval(condition, env, store)
+        val tainted = Evaluator.tainted(condition, env, taintStore)
         val jumpSet = Set(jump(l))
         val maybeJump: Set[State[Stored]] = if (cond.mayBeNonzero) jumpSet else Set.empty
         val maybePass: Set[State[Stored]] = if (cond.mayBeZero) passSet else Set.empty
-        maybeJump | maybePass
+        val states = maybeJump | maybePass
+        if (tainted) {
+          states map { _.addToContextTaint(loc) }
+        } else {
+          states
+        }
 
       // Function call
       case FunctionCall(fun, exps) =>
