@@ -36,7 +36,18 @@ object Analyzer extends App {
 
   def significant[Stored <: Value](state: State[Stored]): Boolean = {
     state match {
-      case rs: RegularState[Stored] => rs.loc.isEndOfFunction
+      case RegularState(loc, env, store, ts, ct, k) => loc.statement match {
+        case FunctionCall(name, exps) if name == "leak" =>
+          def anExpIsTainted(exps: List[Expression]): Boolean = {
+            exps match {
+              case Nil => false
+              case exp :: rest if Evaluator.tainted(exp, env, ts) => true
+              case exp :: rest if !Evaluator.tainted(exp, env, ts) => anExpIsTainted(rest)
+            }
+          }
+          anExpIsTainted(exps)
+        case _ => false
+      }
       case _ => false
     }
   }
