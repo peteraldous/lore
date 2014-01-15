@@ -25,6 +25,7 @@ trait Value extends Expression with Storable {
   def ==(v: Value): Value
   def mayBeZero: Boolean
   def mayBeNonzero: Boolean
+  def abstractValue(ci: ConcreteInt): AbstractValue
 }
 case class ConcreteInt(v: Int) extends Value {
   override def +(value: Value): Value = value match {
@@ -42,10 +43,9 @@ case class ConcreteInt(v: Int) extends Value {
   }
   override def mayBeZero: Boolean = v == 0
   override def mayBeNonzero: Boolean = v != 0
+  override def abstractValue(ci: ConcreteInt): AbstractValue = throw ImpossibleException
 }
-trait AbstractValue extends Value {
-  def abstractValue(ci: ConcreteInt): AbstractValue
-}
+trait AbstractValue extends Value
 case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends AbstractValue {
   override def +(v: Value): SignInt = v match {
     case ci: ConcreteInt => SignInt.this + abstractValue(ci)

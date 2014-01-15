@@ -26,8 +26,8 @@ import java.io.InputStream
 import java.io.FileInputStream
 
 object Analyzer extends App {
-  def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function]): State[Stored] = {
-    RegularState[Stored](functionTable("main").init, Env(), Store(Map.empty, Map.empty), Set.empty, Set.empty, halt)
+  def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function], example: Option[Stored]): State[Stored] = {
+    RegularState[Stored](functionTable("main").init, Env(), Store(Map.empty, Map.empty, example), Set.empty, Set.empty, halt)
   }
 
   // TODO abstract garbage collection - remember to look at all of the environments in the stack
@@ -99,7 +99,8 @@ object Analyzer extends App {
   val allocator = MonovariantAllocator
   val kontAllocator = CallSiteAllocator
 
-  val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
+  val example = SignInt(false, false, false)
+  val allStates = explore(List(inject[SignInt](functionTable, Some(example))), Set[State[SignInt]]())
 
   allStates filter significant map print
 }

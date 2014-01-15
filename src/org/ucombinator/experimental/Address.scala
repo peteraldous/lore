@@ -25,3 +25,4 @@ case class BindAddress(a: Int) extends ValueAddress
 case class MonoAddress(v: Variable) extends ValueAddress
 case class KontAddress(loc: LineOfCode) extends Address
 case object ResultAddress extends ValueAddress
+case object BunkAddress extends ValueAddress
