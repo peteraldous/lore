@@ -22,6 +22,8 @@ package org.ucombinator.experimental
 import scala.io.Source
 import scala.reflect.ClassTag
 import scala.language.postfixOps
+import java.io.InputStream
+import java.io.FileInputStream
 
 object Analyzer extends App {
   def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function]): State[Stored] = {
@@ -94,7 +96,8 @@ object Analyzer extends App {
 
   def print[Stored <: Value](state: State[Stored]): Unit = println(state)
 
-  val functionTable = ToyParser.applyFuns(Source.fromInputStream(System.in).getLines.mkString)
+  val stream = if (args.size > 0) new FileInputStream(args(0)) else System.in
+  val functionTable = ToyParser.applyFuns(Source.fromInputStream(stream).getLines.mkString)
   val callSites = CallerMap(functionTable.values)
   val allocator = MonovariantAllocator
   val kontAllocator = CallSiteAllocator
