@@ -47,8 +47,8 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
   val noResultStore = store - ResultAddress
   val noResultTaintStore = taintStore - ResultAddress
   val paredContextTaint = contextTaint filter { (tloc: LineOfCode) => !(tloc.mustReach contains loc) }
-  val pass = RegularState(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
-  val passSet: Set[State[Stored]] = Set(pass)
+  def pass = RegularState(loc.next, env, noResultStore, noResultTaintStore, paredContextTaint, stack)
+  def passSet: Set[State[Stored]] = Set(pass)
   def jump(l: Label): State[Stored] = RegularState(loc.jump(l), env, noResultStore, noResultTaintStore, paredContextTaint, stack)
   def addToContextTaint(tloc: LineOfCode): RegularState[Stored] = {
     RegularState(loc, env, store, taintStore, contextTaint + tloc, stack)
