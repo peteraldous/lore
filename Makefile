@@ -7,11 +7,11 @@ SCALAC=scalac
 SCALAC_FLAGS=-verbose -deprecation -feature -unchecked -d $(BIN)
 TLC=org.ucombinator.experimental.Analyzer
 
-run: all
-	$(SCALA) $(SCALA_FLAGS) $(TLC)
-
 all: bindir
 	$(SCALAC) $(SCALAC_FLAGS) $(LONG_SRC)/*.scala
+	
+run: all
+	$(SCALA) $(SCALA_FLAGS) $(TLC)
 
 bindir:
 	mkdir -p $(BIN)
