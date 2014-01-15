@@ -85,12 +85,18 @@ case class LineOfCode(val ln: Int, val f: Function) {
       case FunctionCall(f, exps) =>
         val target = Analyzer.functionTable(f).init
         target.mustReach + target
-      case r: ReturnStatement => intersect(Analyzer.callSites(f) map {_.mustReach})
+      case r: ReturnStatement =>
+        val sites = Analyzer.callSites(f)
+        val succs = sites map {_.next}
+        intersect(succs map {_.mustReach})
       case t: ThrowStatement => intersect(possibleCatchers map {_.mustReach})
       case c: CatchDirective => next.mustReach + next
       case f: FunctionDeclaration => throw NestedFunctionException
       // same as ReturnStatement(void)
-      case `FunctionEnd` => intersect(Analyzer.callSites(f) map {_.mustReach})
+      case `FunctionEnd` =>
+        val sites = Analyzer.callSites(f)
+        val succs = sites map {_.next}
+        intersect(succs map {_.mustReach})
       case m: MoveResult => next.mustReach + next
     }
   }
