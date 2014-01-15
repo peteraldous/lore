@@ -21,6 +21,7 @@ package org.ucombinator.experimental
 
 import scala.io.Source
 import scala.reflect.ClassTag
+import scala.language.postfixOps
 
 object Analyzer extends App {
   def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function]): State[Stored] = {
@@ -42,7 +43,7 @@ object Analyzer extends App {
             exps match {
               case Nil => false
               case exp :: rest if Evaluator.tainted(exp, env, ts) => true
-              case exp :: rest if !Evaluator.tainted(exp, env, ts) => anExpIsTainted(rest)
+              case exp :: rest if !Evaluator.tainted(exp, env, ts) => anExpIsTainted(rest) || !(ct isEmpty)
             }
           }
           anExpIsTainted(exps)
