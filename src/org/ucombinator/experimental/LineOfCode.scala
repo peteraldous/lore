@@ -25,7 +25,6 @@ case object StatementNumberOutOfBoundsException extends RuntimeException
 case class LineOfCode(val ln: Int, val f: Function) {
   def next: LineOfCode = LineOfCode(ln + 1, f)
   def jump(l: Label): LineOfCode = f.lookup(l)
-  def hasStatement: Boolean = f.statements isDefinedAt ln
   def statement: Statement = f.statements(ln)
 
   def isEndOfFunction: Boolean = if (f.statements isDefinedAt ln) {

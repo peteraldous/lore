@@ -64,13 +64,11 @@ object Analyzer extends App {
         CallerMap(m + Pair(f, Set(loc)))
     }
     def ++(f: Function): CallerMap = this ++ f.init
-    def ++(loc: LineOfCode): CallerMap = if (loc.hasStatement) {
-      loc.statement match {
-        case `FunctionEnd` => this
-        case FunctionCall(fn, exps) => (this.+(functionTable(fn), loc)) ++ loc.next
-        case _ => this ++ loc.next
-      }
-    } else this
+    def ++(loc: LineOfCode): CallerMap = loc.statement match {
+      case `FunctionEnd` => this
+      case FunctionCall(fn, exps) => (this.+(functionTable(fn), loc)) ++ loc.next
+      case _ => this ++ loc.next
+    }
     def ++(fs: Iterable[Function]): CallerMap = fs.foldLeft(this)((cm: CallerMap, fun: Function) => cm ++ fun)
     def apply(f: Function): Set[LineOfCode] = m(f)
   }

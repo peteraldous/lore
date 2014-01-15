@@ -67,7 +67,7 @@ object ToyParser extends RegexParsers {
 
   def fun: Parser[Function] = functionDeclaration ~ rep(stmt) ~ functionEnd map {
     case decl ~ stmts ~ end => decl match {
-      case FunctionDeclaration(name, vars) => Function(name, vars, stmts)
+      case FunctionDeclaration(name, vars) => Function(name, vars, stmts :+ end)
       case _ => throw new ParseError("Could not deconstruct FunctionDeclaration")
     }
     case _ => throw new ParseError("Bad function")
