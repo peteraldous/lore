@@ -99,7 +99,6 @@ object Analyzer extends App {
   val allocator = MonovariantAllocator
   val kontAllocator = CallSiteAllocator
 
-  val converter = SignIntConverter
   val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
 
   allStates filter significant map print

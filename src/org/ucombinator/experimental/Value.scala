@@ -65,13 +65,16 @@ case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boole
       val mayBeUnequal = negative != oN || zero != oZ || positive != oP || negative || positive
       SignInt(false, mayBeUnequal, mayBeEqual)
   }
-  def abstractValue(ci: ConcreteInt): SignInt = SignIntConverter.abstractValue(ci)
+  def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
   override def mayBeZero: Boolean = zero
   override def mayBeNonzero: Boolean = positive || negative
 }
 case class LessMoreInt(val less: Boolean, val negativeOne: Boolean, val zero: Boolean,
   val one: Boolean, val more: Boolean) extends AbstractValue {
-  override def abstractValue(ci: ConcreteInt): LessMoreInt = LessMoreIntConverter.abstractValue(ci)
+  override def abstractValue(ci: ConcreteInt): LessMoreInt = {
+    val v = ci.v
+    LessMoreInt(v < -1, v == -1, v == 0, v == 1, v > 1)
+  }
   override def ==(v: Value) = v match {
     case ci: ConcreteInt => this == abstractValue(ci)
     case lmi: LessMoreInt => if (this equals lmi) {
@@ -127,13 +130,4 @@ case class LessMoreInt(val less: Boolean, val negativeOne: Boolean, val zero: Bo
   }
   override def mayBeZero: Boolean = zero
   override def mayBeNonzero: Boolean = less || negativeOne || one || more
-}
-case object SignIntConverter {
-  def abstractValue(ci: ConcreteInt): SignInt = new SignInt(ci.v < 0, ci.v == 0, ci.v > 0)
-}
-case object LessMoreIntConverter {
-  def abstractValue(ci: ConcreteInt): LessMoreInt = {
-    val v = ci.v
-    LessMoreInt(v < -1, v == -1, v == 0, v == 1, v > 1)
-  }
 }
