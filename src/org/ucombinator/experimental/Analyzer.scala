@@ -26,8 +26,15 @@ import java.io.InputStream
 import java.io.FileInputStream
 
 object Analyzer extends App {
-  def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function], example: Option[Stored]): State[Stored] = {
-    RegularState[Stored](functionTable("main").init, Env(), Store(Map.empty, Map.empty, example), Set.empty, Set.empty, halt)
+  def inject[Stored <: Value: ClassTag](functionTable: Map[String, Function]): State[Stored] = {
+    val emptyStore = Store(Map.empty, Map.empty)
+    val emptyEnv = Env()
+    val exampleStore = emptyStore + Pair(BunkAddress, example)
+    val v = Variable("sensitive")
+    val vaddr = allocator.alloc(v)
+    val sensitiveEnv = emptyEnv + Pair(v, vaddr)
+    val sensitiveStore = exampleStore + Pair(vaddr, example)
+    RegularState[Stored](functionTable("main").init, sensitiveEnv, sensitiveStore, Set(vaddr), Set.empty, halt)
   }
 
   // TODO abstract garbage collection - remember to look at all of the environments in the stack
@@ -100,7 +107,11 @@ object Analyzer extends App {
   val kontAllocator = CallSiteAllocator
 
   val example = SignInt(false, false, false)
-  val allStates = explore(List(inject[SignInt](functionTable, Some(example))), Set[State[SignInt]]())
+  val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
 
-  allStates filter significant map print
+  val significantStates = allStates filter significant
+  if (significantStates.size > 0)
+    significantStates map print
+  else
+    println("no possible leaks detected")
 }
