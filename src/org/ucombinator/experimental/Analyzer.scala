@@ -43,10 +43,10 @@ object Analyzer extends App {
             exps match {
               case Nil => false
               case exp :: rest if Evaluator.tainted(exp, env, ts) => true
-              case exp :: rest if !Evaluator.tainted(exp, env, ts) => anExpIsTainted(rest) || !(ct isEmpty)
+              case exp :: rest if !Evaluator.tainted(exp, env, ts) => anExpIsTainted(rest)
             }
           }
-          anExpIsTainted(exps)
+          !(ct isEmpty) || anExpIsTainted(exps)
         case _ => false
       }
       case _ => false
