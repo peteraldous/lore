@@ -1,0 +1,12 @@
+(fun main)
+(if sensitive _notzero)
+(:= insensitive 0)
+(goto _end)
+(label _notzero)
+(:= insensitive 1)
+(label _end)
+(invoke leak insensitive)
+(endfun)
+
+(fun leak value)
+(endfun)
