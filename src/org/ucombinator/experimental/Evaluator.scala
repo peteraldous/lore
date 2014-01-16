@@ -30,7 +30,7 @@ case object Evaluator {
     exp match {
       case s: Stored => s
       // TODO this line is heinous. Make it better.
-      case ci: ConcreteInt => store(BunkAddress) match { case s: Stored => s.abstractValue(ci) match { case s: Stored => s }}
+      case ci: ConcreteInt => Converter(Converter(store(BunkAddress)).abstractValue(ci))
       case Addition(lhs, rhs) => Converter(eval(lhs, env, store) + eval(rhs, env, store))
       case Multiplication(lhs, rhs) => Converter(eval(lhs, env, store) * eval(rhs, env, store))
       case Comparison(lhs, rhs) => Converter(eval(lhs, env, store) == eval(rhs, env, store))
