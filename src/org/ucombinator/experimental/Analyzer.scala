@@ -77,7 +77,10 @@ object Analyzer extends App {
       case _ => this ++ loc.next
     }
     def ++(fs: Iterable[Function]): CallerMap = fs.foldLeft(this)((cm: CallerMap, fun: Function) => cm ++ fun)
-    def apply(f: Function): Set[LineOfCode] = m(f)
+    def apply(f: Function): Set[LineOfCode] = m.get(f) match {
+      case Some(sites) => sites
+      case None => Set.empty
+    }
   }
   case object CallerMap {
     def empty: CallerMap = new CallerMap(Map.empty)
@@ -106,7 +109,7 @@ object Analyzer extends App {
   val allocator = MonovariantAllocator
   val kontAllocator = CallSiteAllocator
 
-  val example = SignInt(false, false, false)
+  val example = SignInt(false, true, false)
   val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
 
   val significantStates = allStates filter significant

@@ -19,6 +19,8 @@
 
 package org.ucombinator.experimental
 
+import scala.language.postfixOps
+
 case object NoSuchLabelException extends RuntimeException
 case object StatementNumberOutOfBoundsException extends RuntimeException
 
@@ -66,10 +68,14 @@ case class LineOfCode(val ln: Int, val f: Function) {
   }
 
   def intersect(sets: Set[Set[LineOfCode]]): Set[LineOfCode] = {
-    if (sets.size == 1)
-      sets.head
-    else
-      sets.head & intersect(sets.tail)
+    if (sets isEmpty) {
+      Set.empty
+    } else {
+      if (sets.size == 1)
+        sets.head
+      else
+        sets.head & intersect(sets.tail)
+    }
   }
 
   def mustReach: Set[LineOfCode] = {
@@ -87,16 +93,16 @@ case class LineOfCode(val ln: Int, val f: Function) {
         target.mustReach + target
       case r: ReturnStatement =>
         val sites = Analyzer.callSites(f)
-        val succs = sites map {_.next}
-        intersect(succs map {_.mustReach})
-      case t: ThrowStatement => intersect(possibleCatchers map {_.mustReach})
+        val succs = sites map { _.next }
+        intersect(succs map { _.mustReach })
+      case t: ThrowStatement => intersect(possibleCatchers map { _.mustReach })
       case c: CatchDirective => next.mustReach + next
       case f: FunctionDeclaration => throw NestedFunctionException
       // same as ReturnStatement(void)
       case `FunctionEnd` =>
         val sites = Analyzer.callSites(f)
-        val succs = sites map {_.next}
-        intersect(succs map {_.mustReach})
+        val succs = sites map { _.next }
+        intersect(succs map { _.mustReach })
       case m: MoveResult => next.mustReach + next
     }
   }

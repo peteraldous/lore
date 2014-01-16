@@ -26,7 +26,7 @@ case class Function(val name: String, val params: List[Variable], val statements
 
   val labelStatements = statements flatMap {
     _ match {
-      case LabelStatement(label) => Some(Pair(label, statements.indexOf(label)))
+      case l @ LabelStatement(label) => Some(Pair(label, statements.indexOf(l)))
       case _ => None
     }
   }

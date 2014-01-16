@@ -8,5 +8,5 @@
 (invoke leak insensitive)
 (endfun)
 
-(fun leak)
+(fun leak value)
 (endfun)
