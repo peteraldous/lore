@@ -109,7 +109,7 @@ object Analyzer extends App {
   val allocator = MonovariantAllocator
   val kontAllocator = CallSiteAllocator
 
-  val example = SignInt(false, true, false)
+  val example = SignInt(false, true, true)
   val allStates = explore(List(inject[SignInt](functionTable)), Set[State[SignInt]]())
 
   val significantStates = allStates filter significant
