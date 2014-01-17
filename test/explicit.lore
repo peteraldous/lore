@@ -1,0 +1,7 @@
+(fun main)
+(:= insensitive sensitive)
+(invoke leak insensitive)
+(endfun)
+
+(fun leak value)
+(endfun)
