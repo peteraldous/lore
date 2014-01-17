@@ -23,6 +23,7 @@ case class Label(l: String)
 
 abstract sealed class Statement {
   def isEndOfFunction: Boolean
+  override def toString: String = ""
 }
 case class LabelStatement(val l: Label) extends Statement {
   override def isEndOfFunction: Boolean = false
@@ -30,7 +31,7 @@ case class LabelStatement(val l: Label) extends Statement {
 }
 case class AssignmentStatement(val v: Variable, val e: Expression) extends Statement {
   override def isEndOfFunction: Boolean = false
-  override def toString: String = super.toString + "\"(:= " + v + e + ")\""
+  override def toString: String = super.toString + "\"(:= " + v + " " + e + ")\""
 }
 case class GotoStatement(val l: Label) extends Statement {
   override def isEndOfFunction: Boolean = false
@@ -38,15 +39,15 @@ case class GotoStatement(val l: Label) extends Statement {
 }
 case class IfStatement(val condition: Expression, val l: Label) extends Statement {
   override def isEndOfFunction: Boolean = false
-  override def toString: String = super.toString + "\"(If " + condition + l + ")\""
+  override def toString: String = super.toString + "\"(If " + condition + " " + l + ")\""
 }
 case class FunctionCall(val fun: String, val exps: List[Expression]) extends Statement {
   override def isEndOfFunction: Boolean = false
-  override def toString: String = super.toString + "\"(" + fun + " " + exps + ")\""
+  override def toString: String = super.toString + "\"(invoke " + fun + " " + (exps mkString " ") + ")\""
 }
 case class ReturnStatement(val e: Expression) extends Statement {
   override def isEndOfFunction: Boolean = true
-  override def toString: String = super.toString + "\"(Return " + e + ")\""
+  override def toString: String = super.toString + "\"(return " + e + ")\""
 }
 case class ThrowStatement(val e: Expression) extends Statement {
   override def isEndOfFunction: Boolean = false
@@ -58,7 +59,7 @@ case class CatchDirective(val begin: Label, val end: Label, val handler: Label) 
 }
 case class FunctionDeclaration(val name: String, val vars: List[Variable]) extends Statement {
   override def isEndOfFunction: Boolean = false
-  override def toString: String = super.toString + "\"(fun " + name + " " + vars mkString (" ") + ")\""
+  override def toString: String = super.toString + "\"(fun " + name + " " + (vars mkString " ") + ")\""
 }
 case object FunctionEnd extends Statement {
   override def isEndOfFunction: Boolean = true

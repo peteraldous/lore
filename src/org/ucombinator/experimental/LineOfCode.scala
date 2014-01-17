@@ -106,4 +106,6 @@ case class LineOfCode(val ln: Int, val f: Function) {
       case m: MoveResult => next.mustReach + next
     }
   }
+  
+  override def toString: String = f.name + " line " + ln + ": " + statement.toString
 }

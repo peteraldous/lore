@@ -44,6 +44,7 @@ case class ConcreteInt(v: Int) extends Value {
   override def mayBeZero: Boolean = v == 0
   override def mayBeNonzero: Boolean = v != 0
   override def abstractValue(ci: ConcreteInt): AbstractValue = throw ImpossibleException
+  override def toString: String = v.toString
 }
 trait AbstractValue extends Value
 case class SignInt(val negative: Boolean, val zero: Boolean, val positive: Boolean) extends AbstractValue {

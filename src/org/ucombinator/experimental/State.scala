@@ -181,4 +181,6 @@ case class RegularState[Stored <: Value: ClassTag](val loc: LineOfCode, val env:
         Set(RegularState(loc.next, newEnv, newStore, newTaintStore, paredContextTaint, stack))
     }
   }
+  
+  override def toString: String = loc.toString
 }
